@@ -9,49 +9,23 @@ services:
     command: "true" #keep the image from running immediately.
 
 
-  microservice1:
-    build:
-      context: .
-      dockerfile: microservice1/Dockerfile
-    container_name: microservice1
-    restart: always
-    ports:
-      - "5030:5030"
-    volumes:
-      - ./microservice1:/app
-      - ./shared:/app/shared
-      - ./gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5030
-    depends_on:
-      - monorepo_base
-
-  microservice2:
-    build:
-      context: .
-      dockerfile: microservice2/Dockerfile
-    container_name: microservice2
-    restart: always
-    ports:
-      - "5031:5031"
-    volumes:
-      - ./microservice2:/app
-      - ./shared:/app/shared
-      - ./gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5031
-    depends_on:
-      - monorepo_base
-
   nginx:
     image: nginx:latest
     ports:
       - "80:80"
     extra_hosts:
-      - "e7270:100.123.122.115"
+      - "mbp:100.103.219.96"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/common_proxy_headers.conf:/etc/nginx/common_proxy_headers.conf
     depends_on:
-      - microservice1
-      - microservice2
+      - melange_test1
+      - stocks_test2
+
+networks:
+  default:
+    name: algo
+
+include:
+  - ./s_melange/docker-compose.yml
+  - ./s_stocks/docker-compose.yml

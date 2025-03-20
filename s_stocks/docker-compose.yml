@@ -1,0 +1,17 @@
+
+services:
+
+  stocks_test2:
+    build: ./test2
+    container_name: stocks_test2
+    restart: always
+    ports: ["5031:5031"]
+    networks: [default]
+    volumes:
+      - ./test2:/app
+      - ../shared:/app/shared
+      - ../gunicorn_config.py:/app/gunicorn_config.py
+    environment:
+      - GUNICORN_BIND=0.0.0.0:5031
+    depends_on:
+      - monorepo_base

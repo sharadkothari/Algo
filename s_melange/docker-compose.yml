@@ -1,0 +1,17 @@
+
+services:
+
+  melange_test1:
+    build: ./test1
+    container_name: melange_test1
+    restart: always
+    ports: ["5030:5030"]
+    networks: [default]
+    volumes:
+      - ./test1:/app
+      - ../shared:/app/shared
+      - ../gunicorn_config.py:/app/gunicorn_config.py
+    environment:
+      - GUNICORN_BIND=0.0.0.0:5030
+    depends_on:
+      - monorepo_base
