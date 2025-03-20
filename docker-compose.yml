@@ -1,5 +1,6 @@
-version: "3.8"
+
 services:
+
   monorepo_base:
     build:
       context: .
@@ -7,20 +8,21 @@ services:
     image: monorepo_base #give the base image a name.
     command: "true" #keep the image from running immediately.
 
+
   microservice1:
     build:
       context: .
       dockerfile: microservice1/Dockerfile
+    container_name: microservice1
+    restart: always
     ports:
-      - "5000:5000"
+      - "5030:5030"
     volumes:
-      - ./shared:/app/shared
       - ./microservice1:/app
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./shared:/app/shared
+      - ./gunicorn_config.py:/app/gunicorn_config.py
     environment:
-      - SERVICE_NAME=microservice1
-      - GUNICORN_BIND=0.0.0.0:5001
-
+      - GUNICORN_BIND=0.0.0.0:5030
     depends_on:
       - monorepo_base
 
@@ -28,14 +30,16 @@ services:
     build:
       context: .
       dockerfile: microservice2/Dockerfile
+    container_name: microservice2
+    restart: always
     ports:
-      - "5001:5001"
+      - "5031:5031"
     volumes:
-      - ./shared:/app/shared
       - ./microservice2:/app
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./shared:/app/shared
+      - ./gunicorn_config.py:/app/gunicorn_config.py
     environment:
-      PYTHONPATH: "/app"
+      - GUNICORN_BIND=0.0.0.0:5031
     depends_on:
       - monorepo_base
 
@@ -43,8 +47,11 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
+    extra_hosts:
+      - "mba:100.107.126.37"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/common_proxy_headers.conf:/etc/nginx/common_proxy_headers.conf
     depends_on:
       - microservice1
       - microservice2

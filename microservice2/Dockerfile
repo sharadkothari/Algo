@@ -1,3 +1,3 @@
 FROM monorepo_base
 
-CMD  ["gunicorn", "-c",  "gunicorn_config.py", "app:app"]
+CMD ["gunicorn", "-c", "gunicorn_config.py", "app:app"]
