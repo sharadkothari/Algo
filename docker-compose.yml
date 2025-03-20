@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+  monorepo_base:
+    build:
+      context: .
+      dockerfile: Dockerfile_base
+    image: monorepo_base #give the base image a name.
+    command: "true" #keep the image from running immediately.
+
+  microservice1:
+    build:
+      context: .
+      dockerfile: microservice1/Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./shared:/app/shared
+      - ./microservice1:/app
+    environment:
+      PYTHONPATH: "/app"
+    depends_on:
+      - monorepo_base
+
+  microservice2:
+    build:
+      context: .
+      dockerfile: microservice2/Dockerfile
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./shared:/app/shared
+      - ./microservice2:/app
+    environment:
+      PYTHONPATH: "/app"
+    depends_on:
+      - monorepo_base
