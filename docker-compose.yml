@@ -16,8 +16,11 @@ services:
     volumes:
       - ./shared:/app/shared
       - ./microservice1:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      PYTHONPATH: "/app"
+      - SERVICE_NAME=microservice1
+      - GUNICORN_BIND=0.0.0.0:5001
+
     depends_on:
       - monorepo_base
 
@@ -30,7 +33,18 @@ services:
     volumes:
       - ./shared:/app/shared
       - ./microservice2:/app
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       PYTHONPATH: "/app"
     depends_on:
       - monorepo_base
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - microservice1
+      - microservice2
