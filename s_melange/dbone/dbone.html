@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+td.negative {
+  color: red;
+}
+
+div.sticky {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  background-color: Lightgrey;
+  padding: 10px 1px 11  0px 1px; 
+  z-index: 3;
+}
+
+</style>
+
+</head>
+    <title>DBOne</title>
+    <link rel="icon" href="https://freepngimg.com/thumb/numbers/7-2-1-number-png.png">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-sparklines/2.1.2/jquery.sparkline.min.js"></script>
+    <link rel="stylesheet" href="https://www.w3.org/WAI/assets/css/style.css">
+<body>
+
+    <div class="sticky">       
+        
+    <table id = "Index" style="float: right; margin-right:10px">
+  <tr>
+    <th colspan="3" scope="colgroup" >NIFTY 50</th> 
+    <th colspan="3" scope="colgroup" >NIFTY BANK</th> 
+    <th colspan="3" scope="colgroup" >FIN NIFTY</th>
+    <th colspan="3" scope="colgroup" >VIX</th>   
+  </tr>    
+   <tr > 
+       
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+   </tr>
+      
+  </table>
+
+    </div>
+
+<table id="dbOne1">
+  <tr>
+    <td rowspan="2"></td>
+    <th colspan="1" scope="colgroup" >Client</th>
+    <th colspan="1" scope="colgroup" >Chk</th>    
+    <th colspan="2" scope="colgroup" >MTM</th>
+    <th colspan="4" scope="colgroup" >DD</th>  
+    <th colspan="3" scope="colgroup" >Margin</th>        
+    <th colspan="3" scope="colgroup" >Cash</th>  
+ 
+  </tr>
+  <tr>
+    <th scope="col" id="client" >ID</th>
+    <th scope="col" id="check">Err</th>
+   
+    <th scope="col" id="mtm">paper</th> 
+    <th scope="col" >live</th> 
+    
+    <th scope="col" id="dd">Cur</th> 
+    <th scope="col">%</th>            
+    <th scope="col">Max</th> 
+    <th scope="col">%</th>  
+
+    <th scope="col" id="margin">Amt</th> 
+    <th scope="col">Util%</th>            
+    <th scope="col">Max</th> 
+
+    <th scope="col"id="cash">Amt</th> 
+    <th scope="col">Util%</th>            
+    <th scope="col">Max</th> 
+
+
+   </tr>
+   
+   <tr id="server1"> 
+       <th scope="row"  >server1 </th>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+              <td>  </td>
+
+   </tr>
+   <tr  id="server2">  
+       <th scope="row"> server2</th>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+                <td>  </td>
+   </tr>
+    <tr id="server3"> 
+        <th scope="row" >server3</th>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>                                
+    </tr>
+
+</table>
+
+<table id="dbOne2">
+  <tr>
+    <td rowspan="2"></td>
+    <th colspan="1" scope="colgroup" >Client</th>
+    <th colspan="4" scope="colgroup" >NIFTY50</th>  
+    <th colspan="4" scope="colgroup" >BANKNIFTY</th>      
+    <th colspan="4" scope="colgroup" >FINNIFTY</th>  
+    <th colspan="4" scope="colgroup" >Server</th>  
+
+  </tr>
+  <tr>
+   
+   <th scope="col" id="client" >ID</th>
+
+    <th scope="col" id="nifty50">Put</th> 
+    <th scope="col">Call</th>            
+    <th scope="col">Delta</th> 
+    <th scope="col">PCR</th>
+
+    <th scope="col"id="banknifty">Put</th> 
+    <th scope="col">Call</th>            
+    <th scope="col">Delta</th> 
+    <th scope="col">PCR</th>
+
+    <th scope="col"id="finnifty">Put</th> 
+    <th scope="col">Call</th>            
+    <th scope="col">Delta</th> 
+    <th scope="col">PCR</th>
+    
+    <th scope="col"id="server">CPU</th> 
+    <th scope="col">RAM</th>            
+    <th scope="col">Battery</th>
+    <th scope="col">Time</th>     
+                 
+   
+   </tr>
+   
+   <tr id="server1"> 
+       <th scope="row"  >server1 </th>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+
+   </tr>
+   <tr  id="server2">  
+       <th scope="row"> server2</th>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>
+               <td>  </td>            
+   </tr>
+    <tr id="server3"> 
+        <th scope="row" >server3</th>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>
+        <td>  </td>                                       
+    </tr>
+
+</table>
+
+
+  
+</body>
+</html>
+
+
+
+<script type="text/javascript">
+
+
+        
+  function numberClass(number){
+      if (number > 0) {return 'positive';}
+      else if (number < 0) { return 'negative';}
+      else {return "";};
+          };
+  
+  function updateTable(server, serverName, response){
+  
+  tbl = document.getElementById("Index")
+  response.IT.headings.forEach(function (value, i) {
+      tbl.rows[0].cells[i].innerHTML=value
+  })
+  response.IT.rows[0].forEach(function (value, i) {
+    if (typeof(value)=='number') {value=value.toFixed(0)}
+    cell=tbl.rows[1].cells[i]
+    cell.className=numberClass(Number(value))
+    cell.innerHTML=value });
+  
+  
+  tbl= document.getElementById("dbOne1")
+  tblRow = tbl.rows[server]
+  tblRow.cells[0].innerHTML=serverName
+  
+  ixClient = tbl.rows[1].cells['client'].cellIndex+1
+  tblRow.cells[ixClient].innerHTML=response.title
+
+  ixCheck = tbl.rows[1].cells['check'].cellIndex+1
+  eCheck = response.ST.headings.indexOf("olGap")
+  errCount=0
+  response.ST.rows.slice(0,-1).forEach(function (curRow) {
+  errCount+= (curRow[eCheck]!= '✓ | ✓ | ✓ ') ? (1) : (0)
+  });
+  tblRow.cells[ixCheck].innerHTML= errCount
+  
+ 
+  ixMTM =  tbl.rows[1].cells['mtm'].cellIndex+1
+  cell=tblRow.cells[ixMTM]
+  value=response.ST.rows.at(-1).slice(-4)[0].toFixed(0)
+  cell.className=numberClass(Number(value))
+  cell.innerHTML=value
+  cell=tblRow.cells[ixMTM+1]
+  value=response.ST.rows.at(-1).slice(-5)[0].toFixed(0)
+  cell.className=numberClass(Number(value))
+  cell.innerHTML=value
+  
+  ixdd =  tbl.rows[1].cells['dd'].cellIndex+1
+  response.DT.rows[0].forEach(function (value, i) {
+    tblRow.cells[ixdd+i].innerHTML=value });
+      
+  ixMargin =  tbl.rows[1].cells['margin'].cellIndex+1
+  response.MT.rows[0].forEach(function (value, i) {
+    tblRow.cells[ixMargin+i].innerHTML=value });
+
+  tbl= document.getElementById("dbOne2")
+  tblRow = tbl.rows[server]
+  tblRow.cells[0].innerHTML=serverName
+  
+  ixClient = tbl.rows[1].cells['client'].cellIndex+1
+  tblRow.cells[ixClient].innerHTML=response.title
+    
+  ixGreeks =  tbl.rows[1].cells['nifty50'].cellIndex+1
+  
+  response.GT.headings.forEach(function (value, i) {
+        tbl.rows[0].cells[i+2].innerHTML=value
+    })
+    
+  response.GT.rows[0].forEach(function (value, i) {
+    cell=tblRow.cells[ixGreeks+i]
+    cell.className=numberClass(Number(value))
+    cell.innerHTML=value 
+    });
+
+  ixServer =  tbl.rows[1].cells['server'].cellIndex+1
+  response.SS.rows[0].forEach(function (value, i) {
+    tblRow.cells[ixServer+i].innerHTML=value });
+};
+
+setInterval(function() {
+let server1="u530" 
+let server2="E6330"
+let server3= "E6330-2"
+
+
+$.ajax({url: `http://${server1}/_dashboard`, success: function(response) {
+        updateTable("server1",server1, response);}
+});
+
+$.ajax({url: `http://${server2}/_dashboard`, success: function(response) {
+        updateTable("server2",server2,response);}
+});
+
+$.ajax({url: `http://${server3}/_dashboard`, success: function(response) {
+        updateTable("server3", server3,response);}
+});
+  }, 1200);
+</script>
+
+
+
+

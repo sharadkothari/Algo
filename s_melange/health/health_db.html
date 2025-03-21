@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connectivity Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/styles/ag-theme-balham.css">
+
+    <style>
+        body { font-family: Arial, sans-serif; text-align: left; margin: 20px; }
+        .ag-theme-balham { height: 300px; width: 100%;}
+        .status-ok { color: green; font-weight: bold; }
+        .status-down { color: red; font-weight: bold; }
+        .status-checking { color: orange; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="grid-container" class="ag-theme-balham"></div>
+
+    <script>
+        const columnDefs = [
+            { headerName: "Service", field: "service", sortable: true },
+            { headerName: "Status", field: "status", sortable: true, cellClass: params => getStatusClass(params.value) },
+            { headerName: "Last Checked", field: "last_checked"}
+        ];
+
+        const gridOptions = {
+            columnDefs: columnDefs,
+            rowData: [],
+            defaultColDef: {
+                resizable: true
+            },
+            domLayout: 'autoHeight',
+            autoSizeStrategy: {type: 'fitGridWidth',},
+            // rowNumbers: true,
+        };
+
+        const gridDiv = document.querySelector("#grid-container");
+        const gridApi = agGrid.createGrid(gridDiv, gridOptions);
+
+        const services = [
+            { name: "E7270", url: "flask" },
+            { name: "Redis Server", url: "redis" },
+            { name: "U530", url: "u530/health"},
+            { name: "U530_KWS", url: "u530/kws_status"},
+            { name: "E6330", url: "e6330/health"},
+            { name: "E6330_KWS", url: "e6330/kws_status"},
+            { name: "E6330-2", url: "e6330-2/health"},
+            { name: "E6330-2_KWS", url: "e6330-2/kws_status"},
+        ];
+
+        async function checkHealth(service) {
+            try {
+                let response = await fetch(service.url);
+                let data = await response.json();
+                return { service: service.name, status: data.status, last_checked: new Date().toLocaleTimeString() };
+            } catch (error) {
+
+                return { service: service.name, status: "down", last_checked: new Date().toLocaleTimeString() };
+            }
+        }
+
+        async function updateDashboard() {
+            let results = await Promise.all(services.map(checkHealth));
+            gridApi.setGridOption("rowData", results);
+        }
+
+        function getStatusClass(status) {
+            if (status === "ok") return "status-ok";
+            if (status === "down") return "status-down";
+            return "status-checking";
+        }
+
+        setInterval(updateDashboard, 5000);  // Refresh every 5 seconds
+        updateDashboard();  // Initial load
+    </script>
+</body>
+</html>

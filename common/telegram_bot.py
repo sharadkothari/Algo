@@ -38,3 +38,8 @@ class TelegramBotService(TelegramBot):
 
     def process_messages(self, message):
         self.send(f"got: {message['data']}")
+
+
+if __name__ == "__main__":
+    tbot = TelegramBotService()
+    tbot.send('123')

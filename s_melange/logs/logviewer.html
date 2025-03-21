@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Logs</title>
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.min.css">
+
+    <style>
+        body { font-family: Arial, sans-serif; margin: 10px; }
+        .ag-theme-alpine { height: 90vh; width: 100%; }
+    </style>
+</head>
+<body>
+    <h2>Live Log Viewer</h2>
+    <div id="controls">
+        <label for="streamSelect">Select Stream:</label>
+        <select id="streamSelect" onchange="updateStream()">
+            <option value="">Loading...</option>
+        </select>
+    </div>
+    <div id="logGrid" class="ag-theme-alpine"></div>
+
+    <script>
+        let selectedStream = ""; // Store selected stream
+        let lastTimestamp = 0; // Track the last received logs timestamp
+
+        // Define the AG Grid columns
+        const columnDefs = [
+            { headerName: "Time", field: "timestamp", sortable: true, filter: true, width: 200, cellRenderer: (params) => new Date(parseInt(params.value)).toLocaleString() },
+            { headerName: "Level", field: "level", sortable: true, filter: true, width: 120, cellStyle: params => getLevelStyle(params.value) },
+            { headerName: "Module", field: "module", sortable: false, filter: true, width: 200},
+            { headerName: "Message", field: "message", sortable: false, filter: true, flex: 1 }
+
+        ];
+
+        // Grid Options
+        const gridOptions = {
+            columnDefs: columnDefs,
+            rowData: [],
+            defaultColDef: { resizable: true },
+            pagination: true,
+            paginationPageSize: 20,
+            domLayout: 'autoHeight',
+        };
+
+        // Initialize the AG Grid
+        const gridDiv = document.querySelector("#logGrid");
+        gridApi = agGrid.createGrid(gridDiv, gridOptions);
+        //new agGrid.Grid(gridDiv, gridOptions);
+
+
+       // Fetch available streams from Flask
+        async function fetchStreams() {
+            try {
+                let response = await fetch("/logs/streams");
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+                let streams = await response.json();
+                const streamSelect = document.getElementById("streamSelect");
+
+                // Populate dropdown
+                streamSelect.innerHTML = `<option value="">Select Stream</option>`;
+                streams.forEach(stream => {
+                    let option = document.createElement("option");
+                    option.value = stream;
+                    option.textContent = stream;
+                    streamSelect.appendChild(option);
+                });
+                // Set the first stream as default
+                if (streams.length > 0) {
+                    selectedStream = streams[0];
+                    streamSelect.value = selectedStream;
+                    updateStream();  // Trigger log fetching for the first stream
+                }
+            } catch (error) {
+                console.error("Error fetching streams:", error);
+                document.getElementById("error").textContent = "Error fetching streams.";
+            }
+        }
+
+        // Update stream when user selects a new one
+        function updateStream() {
+            selectedStream = document.getElementById("streamSelect").value;
+            console.log("Selected stream:", selectedStream); // Debugging
+            lastTimestamp = 0; // Reset timestamp for new stream
+            gridApi.setGridOption("rowData", []); // Clear existing logs
+        }
+
+        // Fetch logs from Flask API
+        async function fetchLogs() {
+            try {
+                let response = await fetch(`/logs/get?stream=${selectedStream}`);
+                let logs = await response.json();
+
+                // Filter only new logs
+                let newLogs = logs.filter(log => parseInt(log.timestamp) > lastTimestamp);
+
+                if (newLogs.length > 0) {
+                    lastTimestamp = parseInt(newLogs[newLogs.length - 1].timestamp);
+                    gridApi.applyTransaction({ add: newLogs });
+
+                    // Auto-scroll to the last log and last page
+                    setTimeout(() => {
+                        let rowCount = gridApi.getDisplayedRowCount();
+                        let totalPages = gridApi.paginationGetTotalPages();
+
+                        if (totalPages > 0) {
+                            gridApi.paginationGoToPage(totalPages - 1);  // Move to last page
+                        }
+
+                        setTimeout(() => {
+                            gridApi.ensureIndexVisible(rowCount - 1, "bottom"); // Scroll to last row
+                        }, 200); // Small delay to ensure pagination switch completes
+                    }, 200);
+                }
+            } catch (error) {
+                console.error("Error fetching logs:", error);
+            }
+        }
+
+        // Auto-refresh logs every 2 seconds
+        setInterval(fetchLogs, 2000);
+        fetchLogs();  // Initial load
+        fetchStreams();
+
+        // Function to style logs levels
+        function getLevelStyle(level) {
+            switch (level.toLowerCase()) {
+                case "info": return { color: "green" };
+                case "warning": return { color: "orange" };
+                case "error": return { color: "red" };
+                case "debug": return { color: "blue" };
+                default: return {};
+            }
+        }
+    </script>
+</body>
+</html>

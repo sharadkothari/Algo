@@ -1,0 +1,14 @@
+
+To add new service:
+1. copy docker and change <service_file>:app
+2. Update port in nginx.conf (add new path)
+3. Add image information to service level docker_compose.yml (copy and replace name and port)
+4. In project level docker_compose.yml add dependencies in nginx
+Run:
+docker compose up --build -d monorepo_base <new service name>
+docker restart nginx
+
+____
+To check and close port
+1. lsof -i :<port>
+2. kill -9 <pid>
