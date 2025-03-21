@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microservices Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .service {
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        .toggle-icon {
+            margin-right: 5px;
+            transition: transform 0.3s ease;
+        }
+        .routes {
+            display: none;
+            margin-left: 20px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .route-item {
+            padding: 8px;
+        }
+        .route-item:nth-child(odd) { background-color: #f9f9f9; } /* Alternate shading */
+        .route-item:nth-child(even) { background-color: #e9e9e9; } /* Alternate shading */
+        a { text-decoration: none; color: blue; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h2>Microservices Dashboard</h2>
+    <div id="services">
+        {% for service in services | sort(attribute='name') %}
+            <div class="service" onclick="toggleRoutes('{{ service.name }}')">
+                <span class="toggle-icon" id="icon-{{ service.name }}">▶</span>
+                {{ service.name }}
+            </div>
+            {% if service.routes == "Service Unreachable" %}
+                <div class="routes" id="{{ service.name }}" style="color: red; margin-left: 20px;">
+                    Service Unreachable
+                </div>
+            {% else %}
+                <div class="routes" id="{{ service.name }}">
+                    {% for route in service.routes | sort(attribute='route') %}
+                        <div class="route-item">
+                            <a href="/{{ service.name }}/{{ route.route }}">
+                                {{ route.route }}
+                            </a> ({{ ', '.join(route.methods) }})
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <script>
+        function toggleRoutes(serviceName) {
+            let routesDiv = document.getElementById(serviceName);
+            let icon = document.getElementById("icon-" + serviceName);
+
+            if (routesDiv.style.display === "none" || routesDiv.style.display === "") {
+                routesDiv.style.display = "block";
+                icon.style.transform = "rotate(90deg)";  // Rotate icon
+            } else {
+                routesDiv.style.display = "none";
+                icon.style.transform = "rotate(0deg)";  // Reset icon rotation
+            }
+        }
+    </script>
+</body>
+</html>

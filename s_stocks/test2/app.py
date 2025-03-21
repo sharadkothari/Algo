@@ -1,5 +1,5 @@
 from flask import Flask
-from shared.utils import greet
+from common.utils import greet
 
 app = Flask(__name__)
 

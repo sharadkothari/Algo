@@ -1,4 +1,4 @@
-# shared/common_models.py
+# common/common_models.py
 class SharedModel:
     def __init__(self, value):
         self.value = value

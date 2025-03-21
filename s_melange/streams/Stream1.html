@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask M3U8 Player</title>
+
+    <!-- Video.js CDN -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.3.0/video-js.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.3.0/video.min.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; background-color: black; overflow: hidden; }
+
+        /* Fullscreen video container */
+        #videoContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Make video resize to fit window exactly */
+        video {
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+        }
+
+        /* Custom control bar wrapper to separate dropdown and controls */
+        #customControls {
+            position: absolute;
+            bottom: 1px;
+            left: 1px;
+            right: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 999;
+        }
+
+        /* Dropdown on the extreme left */
+        #controls {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1px;
+            border-radius: 5px;
+        }
+
+        select {
+            padding: 1px;
+            font-size: 14px;
+            color: white;
+            background: #222;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        /* Align video controls to the right */
+        .vjs-control-bar {
+            display: flex !important;
+            justify-content: flex-end !important;
+            width: auto !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Video.js Player Container -->
+    <div id="videoContainer">
+        <video id="videoPlayer" class="video-js vjs-default-skin" controls playsinline airplay>
+            <source id="videoSource" src="" type="application/x-mpegURL">
+        </video>
+    </div>
+
+    <!-- Separate control bar with dropdown on the left -->
+    <div id="customControls">
+        <div id="controls">
+            <select id="streamSelect">
+                {% for name, url in streams.items() %}
+                    <option value="{{ url }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <script>
+        var player = videojs('videoPlayer');
+        var selectElement = document.getElementById('streamSelect');
+
+        // Automatically select the first available stream on load
+        if (selectElement.options.length > 0) {
+            var firstStream = selectElement.options[0].value;
+            player.src({ src: firstStream, type: "application/x-mpegURL" });
+            player.play();
+        }
+
+        // Move Video.js controls to the bottom-right by limiting width
+        var controlBar = player.getChild('controlBar');
+        controlBar.el().style.position = "absolute";
+        controlBar.el().style.right = "10px";
+        controlBar.el().style.left = "auto";
+
+        // Update video source dynamically when selecting a stream
+        selectElement.addEventListener('change', function() {
+            var newSrc = this.value;
+            player.src({ src: newSrc, type: "application/x-mpegURL" });
+            player.play();
+        });
+
+        // Ensure video resizes to window
+        function resizeVideo() {
+            let videoPlayer = document.getElementById("videoPlayer");
+            videoPlayer.style.width = window.innerWidth + "px";
+            videoPlayer.style.height = window.innerHeight + "px";
+        }
+
+        window.addEventListener("resize", resizeVideo);
+        resizeVideo(); // Initial resize
+    </script>
+
+</body>
+</html>

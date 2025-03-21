@@ -9,7 +9,7 @@ services:
     networks: [default]
     volumes:
       - ./test2:/app
-      - ../shared:/app/shared
+      - ../common:/app/common
       - ../gunicorn_config.py:/app/gunicorn_config.py
     environment:
       - GUNICORN_BIND=0.0.0.0:5031

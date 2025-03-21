@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U8 Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: start;
+            width: 100%;
+        }
+        video {
+            width: 100%; /* Responsive video */
+            height: auto;
+        }
+        select {
+            padding: 0;
+            font-size: 12px;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <select id="streamSelect">
+            {% for name, url in streams.items() %}
+            <option value="{{ url }}">{{ name }}</option>
+            {% endfor %}
+        </select>
+        <video id="videoPlayer" controls></video>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const video = document.getElementById("videoPlayer");
+            const select = document.getElementById("streamSelect");
+
+            function playStream(url) {
+                if (Hls.isSupported()) {
+                    let hls = new Hls();
+                    hls.loadSource(url);
+                    hls.attachMedia(video);
+                } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+                    video.src = url;
+                }
+                video.play();
+            }
+
+            function updateTitle() {
+                document.title = select.options[select.selectedIndex].text;
+            }
+
+            select.addEventListener("change", function () {
+                playStream(this.value);
+                updateTitle(); // Change the page title
+            });
+
+            // Auto-play the first stream and update the title
+            playStream(select.value);
+            updateTitle();
+        });
+    </script>
+</body>
+</html>
