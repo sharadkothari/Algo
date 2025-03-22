@@ -53,7 +53,7 @@ class TelegramBotMain(TelegramBot):
 
 class TelegramBotService(TelegramBot):
     consumer_name = "service"
-    chat_id = 1002340369818
+    chat_id = -1002340369818
 
     def __new__(cls):
         return super().__new__(cls, cls.chat_id, cls.consumer_name)
