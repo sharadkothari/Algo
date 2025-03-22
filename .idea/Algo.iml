@@ -1,10 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
+  <component name="Flask">
+    <option name="enabled" value="true" />
+  </component>
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/s_melange/home" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/s_melange/streams" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="ag-grid-community" level="application" />
+    <orderEntry type="library" name="jquery-sparklines" level="application" />
+  </component>
+  <component name="TemplatesService">
+    <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />
+    <option name="TEMPLATE_FOLDERS">
+      <list>
+        <option value="$MODULE_DIR$/s_melange/home" />
+        <option value="$MODULE_DIR$/s_melange/streams" />
+        <option value="$MODULE_DIR$/s_melange/alerts" />
+        <option value="$MODULE_DIR$/s_melange/dbone" />
+        <option value="$MODULE_DIR$/s_melange/health" />
+        <option value="$MODULE_DIR$/s_melange/logs" />
+        <option value="$MODULE_DIR$/s_melange/telegram" />
+      </list>
+    </option>
   </component>
 </module>

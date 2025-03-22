@@ -1,5 +1,5 @@
 from flask import Flask, render_template, json, Response, jsonify
-from common.config import data_dir, server_url
+from common.config import data_dir
 from common.utils import list_routes, register_service
 from pathlib import Path
 
@@ -9,7 +9,7 @@ app = Flask(__name__, template_folder=".", static_folder=".")
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 port = 5002
 
-with open(data_dir + f'M3U8.json', 'r') as f:
+with open(data_dir / 'M3U8.json', 'r') as f:
     m3u8_links = json.loads(f.read())
 
 

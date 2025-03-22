@@ -13,7 +13,7 @@ services:
     image: nginx:latest
     container_name: nginx
     ports: ["80:80"]
-    extra_hosts: ["mbp:100.103.219.96"]
+    extra_hosts: ["e7270:100.123.122.115"]
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/common_proxy_headers.conf:/etc/nginx/common_proxy_headers.conf
@@ -26,7 +26,10 @@ services:
       - melange_logs
       - melange_alerts
       - melange_telegram
-      - stocks_test2
+      - stocks_ticks
+      - stocks_candles
+      - stocks_dynamic_candles
+      - stocks_ticking
 
   netdata:
     image: netdata/netdata:latest

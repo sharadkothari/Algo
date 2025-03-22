@@ -3,5 +3,8 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.12 (Algo)" />
   </component>
+  <component name="ProjectResources">
+    <resource url="https://raw.githubusercontent.com/docker/compose/master/compose/config/compose_spec.json" location="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (Algo)" project-jdk-type="Python SDK" />
 </project>

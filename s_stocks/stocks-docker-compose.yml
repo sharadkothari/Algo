@@ -1,17 +1,62 @@
 
 services:
 
-  stocks_test2:
-    build: ./test2
-    container_name: stocks_test2
+  stocks_ticks:
+    build: ./ticks
+    container_name: stocks_ticks
     restart: always
-    ports: ["5031:5031"]
+    ports: ["5021:5021"]
     networks: [default]
     volumes:
-      - ./test2:/app
+      - ./ticks:/app
       - ../common:/app/common
       - ../gunicorn_config.py:/app/gunicorn_config.py
     environment:
-      - GUNICORN_BIND=0.0.0.0:5031
+      - GUNICORN_BIND=0.0.0.0:5021
+    depends_on:
+      - monorepo_base
+  
+  stocks_candles:
+    build: ./candles
+    container_name: stocks_candles
+    restart: always
+    ports: ["5022:5022"]
+    networks: [default]
+    volumes:
+      - ./candles:/app
+      - ../common:/app/common
+      - ../gunicorn_config.py:/app/gunicorn_config.py
+    environment:
+      - GUNICORN_BIND=0.0.0.0:5022
+    depends_on:
+      - monorepo_base
+
+  stocks_dynamic_candles:
+    build: ./dynamic_candles
+    container_name: stocks_dynamic_candles
+    restart: always
+    ports: ["5023:5023"]
+    networks: [default]
+    volumes:
+      - ./dynamic_candles:/app
+      - ../common:/app/common
+      - ../gunicorn_config.py:/app/gunicorn_config.py
+    environment:
+      - GUNICORN_BIND=0.0.0.0:5023
+    depends_on:
+      - monorepo_base
+
+  stocks_ticking:
+    build: ./ticking
+    container_name: stocks_ticking
+    restart: always
+    ports: ["5024:5024"]
+    networks: [default]
+    volumes:
+      - ./ticking:/app
+      - ../common:/app/common
+      - ../gunicorn_config.py:/app/gunicorn_config.py
+    environment:
+      - GUNICORN_BIND=0.0.0.0:5024
     depends_on:
       - monorepo_base

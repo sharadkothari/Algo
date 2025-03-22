@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request, json, Response
-from common.config import  server_url, redis_host, redis_port, redis_db, data_dir
+from common.config import redis_host, redis_port, redis_db, data_dir
 from common.utils import list_routes, register_service
 from pathlib import Path
 import requests
@@ -95,7 +95,7 @@ def health_check():
 
 @app.route("/streams/m3u", methods=["GET"])
 def get_m3u():
-    with open(data_dir + f'M3U8.json', 'r') as f:
+    with open(data_dir / 'M3U8.json', 'r') as f:
         m3u8_links = json.loads(f.read())
 
     m3u_content = "#EXTM3U\n"
