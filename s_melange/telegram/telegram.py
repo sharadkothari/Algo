@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, json, Response
-from common.config import redis_host, redis_port, redis_db, data_dir
+from common.config import get_redis_client
 from common.utils import list_routes, register_service
+from common.config import data_dir
 from pathlib import Path
 import requests
 from common.my_logger import logger
@@ -13,11 +14,13 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 module_name = Path(__file__).stem
 port = 6007
 
-redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
+with open(data_dir / 'telegram.json', 'r') as f:
+    telegram_data = json.loads(f.read())
 
-TOKEN = "7932744991:AAHOzAcOiGK0ONqiKDfbdgwZ7pFolW4ATiU"
+redis_client = get_redis_client()
+TOKEN = telegram_data['token']
+NGROK_URL = telegram_data['ngrok_url']
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}"
-NGROK_URL = "https://pure-calf-measured.ngrok-free.app"
 ALLOWED_IPS = ["127.0.0.1", "::1", "100.123.122.115", "172.20.0.1", "100.103.219.96", "192.168.65.1"]
 handler_manager = TelegramHandlerManager(api_url=TELEGRAM_API_URL, redis_client=redis_client)
 
