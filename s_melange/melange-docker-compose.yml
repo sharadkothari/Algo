@@ -71,6 +71,7 @@ services:
       - ./logs:/app
       - ../common:/app/common
       - ../gunicorn_config.py:/app/gunicorn_config.py
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - GUNICORN_BIND=0.0.0.0:5005
     depends_on:

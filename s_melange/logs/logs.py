@@ -1,8 +1,10 @@
 from flask import Flask, render_template, jsonify, request
 from common.config import redis_host, redis_port, redis_db
-from common.utils import list_routes, register_service
+from common.utils import list_routes
 from pathlib import Path
 import redis
+import docker
+from ansi2html import Ansi2HTMLConverter
 
 app = Flask(__name__, template_folder=".", static_folder=".")
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -50,17 +52,28 @@ def view_logs():
 def get_routes():
     return list_routes(app)
 
-@app.route("/register")
-def register():
-    return register_service(module_name=module_name, port=port)
-
 
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok"}), 200
 
 
-register()
+@app.route("/dockerlog/<service_name>")
+def docker_logs(service_name):
+    if value := redis_client.hget("services", service_name):
+        container_id = value.split(":")[0]
+        try:
+            client = docker.from_env()
+            container = client.containers.get(container_id)
+            logs = container.logs(tail=50)
+            conv = Ansi2HTMLConverter(inline=True)
+            return render_template("docker_log.html", logs=conv.convert(logs.decode('utf-8'), full=False))
+        except Exception as e:
+            return jsonify({"error": e})
+
+    else:
+        return jsonify({"error": f"{service_name} not found"}), 404
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=True)
