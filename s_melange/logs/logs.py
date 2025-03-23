@@ -58,7 +58,14 @@ def health_check():
     return jsonify({"status": "ok"}), 200
 
 
-@app.route("/dockerlog/<service_name>")
+@app.route("/dockerlogs")
+def index():
+    # Fetch all registered services from Redis
+    services = sorted(redis_client.hkeys("services"))
+    return render_template("docker_logs.html", services=services)
+
+
+@app.route("/dockerlogs/logs/<service_name>")
 def docker_logs(service_name):
     if value := redis_client.hget("services", service_name):
         container_id = value.split(":")[0]
@@ -67,10 +74,9 @@ def docker_logs(service_name):
             container = client.containers.get(container_id)
             logs = container.logs(tail=50)
             conv = Ansi2HTMLConverter(inline=True)
-            return render_template("docker_log.html", logs=conv.convert(logs.decode('utf-8'), full=False))
+            return jsonify({"logs": conv.convert(logs.decode('utf-8'), full=False)})
         except Exception as e:
-            return jsonify({"error": e})
-
+            return jsonify({"error": str(e)}), 500
     else:
         return jsonify({"error": f"{service_name} not found"}), 404
 

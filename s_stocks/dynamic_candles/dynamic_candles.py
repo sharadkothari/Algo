@@ -18,17 +18,12 @@ dynamic_candles = DynamicCandlesBuilder()
 def get_routes():
     return list_routes(app)
 
-@app.route("/register")
-def register():
-    return register_service(module_name=module_name, port=port)
-
 
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok"}), 200
 
 
-register()
 # atexit.register(dynamic_candles.graceful_exit)
 
 if __name__ == "__main__":

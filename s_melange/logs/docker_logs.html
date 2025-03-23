@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Logs</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #eee;
+            font-family: monospace;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent body scrolling */
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: #222;
+            padding: 15px;
+            overflow-y: auto;  /* Enable independent scrolling */
+            border-right: 2px solid #444;
+            height: 100vh; /* Full height */
+        }
+
+        #sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #sidebar li {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #444;
+        }
+
+        #sidebar li:hover {
+            background-color: #333;
+        }
+
+        #content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            height: 100vh; /* Full height */
+            overflow: hidden; /* Prevent content from causing body scroll */
+        }
+
+        #log-container {
+            flex-grow: 1;
+            overflow-y: auto; /* Enable independent scrolling */
+            background-color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 18px;
+            line-height: 1.5;
+            padding: 10px;
+            background-color: #000;
+            border-radius: 5px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h3>Services</h3>
+        <ul id="service-list">
+            {% for service in services %}
+                <li onclick="fetchLogs('{{ service }}')">{{ service }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div id="content">
+        <h2 id="service-title">Select a Service</h2>
+        <div id="log-container">
+            <pre id="log-content">Logs will appear here...</pre>
+        </div>
+    </div>
+
+    <script>
+        function scrollToBottom() {
+            const logContent = document.getElementById("log-content");
+            logContent.scrollTop = logContent.scrollHeight;
+    }
+        document.addEventListener("DOMContentLoaded", function () {
+            const lastService = localStorage.getItem("lastSelectedService");
+            if (lastService) {
+                fetchLogs(lastService);
+            }
+        });
+
+        function fetchLogs(service) {
+            // Store the selected service in localStorage
+            localStorage.setItem("lastSelectedService", service);
+            document.getElementById("service-title").textContent = "Logs for: " + service;
+            document.getElementById("log-content").textContent = "Loading logs...";
+
+            fetch(`dockerlogs/logs/${service}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.logs) {
+                        document.getElementById("log-content").innerHTML = data.logs;
+                        scrollToBottom();
+                    } else {
+                        document.getElementById("log-content").textContent = "Error: " + data.error;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById("log-content").textContent = "Error fetching logs.";
+                });
+        }
+    </script>
+
+</body>
+</html>

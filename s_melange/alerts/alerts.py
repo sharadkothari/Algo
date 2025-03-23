@@ -124,11 +124,6 @@ def get_routes():
     return list_routes(app)
 
 
-@app.route("/register")
-def register():
-    return register_service(module_name=module_name, port=port)
-
-
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok"}), 200
@@ -157,7 +152,6 @@ def monitor_alerts():
 
 
 threading.Thread(target=monitor_alerts, daemon=True).start()
-register()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=True)

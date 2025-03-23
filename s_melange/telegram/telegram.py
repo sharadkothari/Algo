@@ -83,11 +83,6 @@ def get_routes():
     return list_routes(app)
 
 
-@app.route("/register")
-def register():
-    return register_service(module_name=module_name, port=port)
-
-
 @app.route("/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok"}), 200
@@ -107,7 +102,6 @@ def get_m3u():
     return Response(m3u_content, mimetype="audio/x-mpegurl", content_type="application/x-mpegurl")
 
 
-register()
 set_webhook()
 
 if __name__ == "__main__":
