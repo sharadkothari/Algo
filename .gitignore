@@ -1,0 +1,20 @@
+# Ignore system files
+.DS_Store
+
+# Ignore PyCharm settings
+.idea/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore virtual environments
+venv/
+.venv/
+
+# Ignore Docker-related files
+.env
+docker-compose.override.yml
+
+common/data/
