@@ -21,18 +21,68 @@
             color: white !important;
             font-weight: bold;
         }
-
+            .searchable-dropdown {
+                width: 150px !important; /* Ensures uniform dropdown width */
+            }
+            label {
+                white-space: nowrap; /* Prevents labels from wrapping */
+                font-weight: bold;
+            }
+            #dropdownContainer {
+                display: flex;
+                align-items: center;
+                gap: 15px; /* Space between elements */
+                flex-wrap: nowrap; /* Ensures everything stays in one row */
+                overflow-x: auto; /* Enables horizontal scrolling on small screens */
+            }
+            #addAlertButton {
+                padding: 8px 12px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            #addAlertButton:hover {
+                background-color: #0056b3;
+            }
+            #symbol {
+                width: 200px !important; /* Adjust the width as needed */
+            }
     </style>
 </head>
 <body>
 
-    <label for="exchange">Exchange:</label>
-    <select id="exchange" onchange="populateSymbols()"></select>
+    <!-- Exchange Dropdown -->
+    <div id="dropdownContainer" style="display: flex; align-items: center; gap: 15px; flex-wrap: nowrap;">
+        <label for="exchange">Exchange:</label>
+        <select id="exchange" class="searchable-dropdown" onchange="updateDropdowns()"></select>
 
-    <label for="symbol"> Symbol:</label>
-    <select id="symbol"></select>
+        <label for="symbol">Symbol:</label>
+        <select id="symbol" class="searchable-dropdown" onchange="populateExpStr()"></select>
 
-    <button onclick="addAlert()">Add Alert</button>
+        <div id="optionsDropdowns" style="display: flex; align-items: center; gap: 15px; display: none;">
+            <label for="exp_str">Expiry:</label>
+            <select id="exp_str" class="searchable-dropdown" onchange="populateOptType()"></select>
+
+            <label for="opt_type">Option Type:</label>
+            <select id="opt_type" class="searchable-dropdown" onchange="populateStrikes()"></select>
+
+            <label for="strike">Strike:</label>
+            <select id="strike" class="searchable-dropdown"></select>
+        </div>
+
+        <!-- Add Alert Button -->
+        <button id="addAlertButton" onclick="addAlert()">Add Alert</button>
+    </div>
+
+    <!-- Include jQuery & Select2 for Searchable Dropdowns -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
+
     <div id="grid" class="ag-theme-alpine"></div>
     <audio id="alertSound">
     <source src="play-alert" type="audio/mp3">
@@ -41,6 +91,17 @@
 
     <script>
         let exchangeData = {}; // Store exchange-symbol mapping globally
+
+        $(document).ready(() => {
+            fetchSymbols();
+            $(".searchable-dropdown").select2({
+                width: '150px', // Ensures proper width
+                dropdownAutoWidth: true
+            }).on('select2:open', function () {
+                let searchField = $('.select2-search__field');
+                searchField[0].focus(); // Auto-focus the search box
+            });
+        });
         let alertIntervals = {};
 
         let gridOptions = {
@@ -80,19 +141,90 @@
             setTimeout(fetchAlerts, 500); // Delay fetching alerts to ensure AG Grid is ready
         });
 
+
         function fetchSymbols() {
             $.get('symbols', function(data) {
-                exchangeData = data; // Store fetched exchange-symbol mapping
+                exchangeData = data;
                 let exchangeDropdown = $('#exchange');
-                let symbolDropdown = $('#symbol');
-
                 exchangeDropdown.empty().append(new Option("Select Exchange", ""));
-                symbolDropdown.empty().append(new Option("Select Symbol", ""));
 
                 Object.keys(data).forEach(exchange => {
                     exchangeDropdown.append(new Option(exchange, exchange));
                 });
+                exchangeDropdown.trigger('change'); // Apply select2 update
             });
+        }
+
+        function updateDropdowns() {
+            let selectedExchange = $('#exchange').val();
+            let symbolDropdown = $('#symbol');
+            let optionsDiv = $('#optionsDropdowns');
+
+            symbolDropdown.empty().append(new Option("Select Symbol", ""));
+
+            if (exchangeData[selectedExchange]) {
+                let isOptionsMarket = (selectedExchange === "NFO" || selectedExchange === "BFO");
+
+                optionsDiv.toggle(isOptionsMarket); // Show/hide option-related dropdowns
+
+                let symbols = isOptionsMarket ? Object.keys(exchangeData[selectedExchange]) : exchangeData[selectedExchange]["symbols"];
+                populateDropdown(symbolDropdown, symbols);
+            }
+        }
+
+        function populateExpStr() {
+            let selectedExchange = $('#exchange').val();
+            let selectedSymbol = $('#symbol').val();
+            let expDropdown = $('#exp_str');
+            expDropdown.empty();
+
+            if (exchangeData[selectedExchange] && exchangeData[selectedExchange][selectedSymbol]) {
+                let expiries = Object.keys(exchangeData[selectedExchange][selectedSymbol]);
+                populateDropdown(expDropdown, expiries);
+            }
+        }
+
+        function populateOptType() {
+            let selectedExchange = $('#exchange').val();
+            let selectedSymbol = $('#symbol').val();
+            let selectedExp = $('#exp_str').val();
+            let optTypeDropdown = $('#opt_type');
+            optTypeDropdown.empty();
+
+            if (exchangeData[selectedExchange] && exchangeData[selectedExchange][selectedSymbol]
+                && exchangeData[selectedExchange][selectedSymbol][selectedExp]) {
+                let optTypes = ["CE", "PE"]; // Fixed values for Call and Put options
+                populateDropdown(optTypeDropdown, optTypes);
+            }
+        }
+
+        function populateStrikes() {
+            let selectedExchange = $('#exchange').val();
+            let selectedSymbol = $('#symbol').val();
+            let selectedExp = $('#exp_str').val();
+            let selectedOptType = $('#opt_type').val();
+            let strikeDropdown = $('#strike');
+            strikeDropdown.empty();
+
+            if (exchangeData[selectedExchange] && exchangeData[selectedExchange][selectedSymbol]
+                && exchangeData[selectedExchange][selectedSymbol][selectedExp]) {
+                let strikes = Object.keys(exchangeData[selectedExchange][selectedSymbol][selectedExp]);
+                populateDropdown(strikeDropdown, strikes);
+            }
+        }
+
+        function populateDropdown(dropdown, values) {
+            dropdown.empty();
+
+            if (values.length === 1) {
+                dropdown.append(new Option(values[0], values[0], true, true)); // Auto-select
+                dropdown.trigger('change'); // Ensure change event is fired
+            } else {
+                dropdown.append(new Option("Select", ""));
+                values.forEach(value => dropdown.append(new Option(value, value)));
+            }
+
+            dropdown.select2(); // Reapply Select2 to update UI
         }
 
         function populateSymbols() {
@@ -111,12 +243,38 @@
         }
 
         function addAlert() {
+            let exchange = $('#exchange').val();
             let symbol = $('#symbol').val();
-            if (!symbol) {
-                alert("Please select a symbol.");
+
+            if (!exchange || !symbol) {
+                alert("Please select an exchange and symbol.");
                 return;
             }
-            let newAlert = { symbol, operator: '', target: '', status: 'Pending', id:'tmp-id-1' };
+
+            let fullSymbol = `${exchange}:${symbol}`;
+
+            // Check if options dropdowns are visible
+            if ($('#optionsDropdowns').is(":visible")) {
+                let expStr = $('#exp_str').val();
+                let strike = $('#strike').val();
+                let optType = $('#opt_type').val();
+
+                if (!expStr || !strike || !optType) {
+                    alert("Please select expiry, strike, and option type.");
+                    return;
+                }
+
+                fullSymbol = `${exchange}:${symbol}${expStr}${strike}${optType}`;
+            }
+
+            let newAlert = {
+                symbol: fullSymbol,
+                operator: '',
+                target: '',
+                status: 'Pending',
+                id: 'tmp-id-1'
+            };
+
             gridOptions.api.applyTransaction({ add: [newAlert] });
         }
 

@@ -9,6 +9,7 @@ import time
 import datetime
 import redis
 from urllib.parse import unquote
+import re
 import os
 
 app = Flask(__name__, template_folder=".", static_folder=".")
@@ -41,9 +42,32 @@ def get_symbols():
     for symbol in symbols:
         if ":" in symbol:
             exchange, sym = symbol.split(":", 1)
+
             if exchange not in exchanges:
-                exchanges[exchange] = []
-            exchanges[exchange].append(sym)
+                exchanges[exchange] = {}
+
+            # Handling index and stock symbols
+            if exchange in ("NSE", "BSE"):
+                exchanges[exchange].setdefault("symbols", []).append(sym)
+                continue
+
+            # Handling options format
+            try:
+                match = re.match(r"^([A-Z]+)(\d.{4})(.*)(..)$", sym)
+                symbol_part = match.group(1)  # String till first digit
+                exp_str = match.group(2)  # First digit + next 4 characters
+                strike = match.group(3)  # Balance characters excluding last two
+                opt_type = match.group(4)  # Last two characters
+
+                if symbol_part not in exchanges[exchange]:
+                    exchanges[exchange][symbol_part] = {}
+
+                if exp_str not in exchanges[exchange][symbol_part]:
+                    exchanges[exchange][symbol_part][exp_str] = {}
+
+                exchanges[exchange][symbol_part][exp_str].setdefault(strike, []).append(opt_type)
+            except Exception as e:
+                print(f"Error parsing {sym}: {e}")
 
     return jsonify(exchanges)
 
