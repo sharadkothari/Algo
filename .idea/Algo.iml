@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="Flask">
-    <option name="enabled" value="true" />
+    <option name="enabled" value="false" />
   </component>
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
@@ -25,6 +25,11 @@
         <option value="$MODULE_DIR$/s_melange/health" />
         <option value="$MODULE_DIR$/s_melange/logs" />
         <option value="$MODULE_DIR$/s_melange/telegram" />
+        <option value="$MODULE_DIR$/s_stocks/ticks" />
+        <option value="$MODULE_DIR$/s_stocks/candles" />
+        <option value="$MODULE_DIR$/s_stocks/dynamic_candles" />
+        <option value="$MODULE_DIR$/s_stocks/ticking" />
+        <option value="$MODULE_DIR$/s_melange/docker_db" />
       </list>
     </option>
   </component>
