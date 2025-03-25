@@ -10,12 +10,15 @@ import queue
 from common.my_logger import logger
 from common.trading_hours import TradingHours
 from common.telegram_bot import TelegramBotStocks
+import os
+import sys
 
 with open(data_dir / f'brokers.json', 'r') as f:
     broker_data = json.loads(f.read())
 
 token_dir = base_dir_prv / 'config'
 tbot = TelegramBotStocks()
+
 
 class KiteSocket:
 
@@ -97,9 +100,11 @@ class KiteSocket:
                 seconds_until_open = self.trading_hour.time_until_next_open().total_seconds()
                 next_open_time = now + datetime.timedelta(seconds=seconds_until_open)
                 self.stop()
-                logger.info(f'suspending ticker till {next_open_time:%d-%b-%Y %H:%M} | {seconds_until_open:.0f} seconds')
+                logger.info(
+                    f'suspending ticker till {next_open_time:%d-%b-%Y %H:%M} | {seconds_until_open:.0f} seconds')
                 time.sleep(seconds_until_open)
-                logger.info('resuming...')
+                logger.info('Resuming... Restarting the service now.')
+                self.restart_program()  # needed due to Kiteticker uses twisted
 
         def start_ticker():
             if not self.is_running:
@@ -136,6 +141,11 @@ class KiteSocket:
             suspend_ticker()
             start_ticker()
 
+    @staticmethod
+    def restart_program(self):
+        """Restart the current process"""
+        logger.info("Restarting Flask service for a new session...")
+        os.execv(sys.executable, ['python'] + sys.argv)  # Restart the Python process
 
     def stop(self):
         if self.kws:
@@ -167,6 +177,7 @@ class KiteSocket:
 
             df_dict = df_concat.set_index('instrument_token')['symbol'].to_dict()
             return df_dict
+
 
 if __name__ == "__main__":
     kq = KiteSocket()
