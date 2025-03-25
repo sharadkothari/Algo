@@ -25,7 +25,7 @@ class KiteSocket:
         self.client_id = client_id
         self.api_key = broker_data[client_id]['api_key']
         self.redis = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
-        self.trading_hour = TradingHours()
+        self.trading_hour = TradingHours(start_buffer=60)
         # self.rp = self.redis_client.pipeline()
         self.kws = None  # WebSocket instance
         self.kite = KiteConnect(self.api_key)
@@ -34,6 +34,7 @@ class KiteSocket:
 
         self.tick_queue = queue.Queue()
         self.is_running = False
+        self.connected = False
         self.start()
 
     def start(self):
@@ -56,6 +57,7 @@ class KiteSocket:
             tokens = list(self.inst_symbol_dict)
             ws.subscribe(tokens)
             ws.set_mode(ws.MODE_FULL, tokens)
+            self.connected = True
 
         def on_ticks(ws, ticks):
             cur_tick = {self.inst_symbol_dict.get(tick["instrument_token"], "NA"): tick for tick in ticks}
@@ -102,10 +104,13 @@ class KiteSocket:
         def start_ticker():
             if not self.is_running:
                 if access_token := self.get_access_token():
-                    logger.info("starting ticker...")
-                    self.start_kiteticker(access_token)
+                    attempt_no = 1
+                    while not self.connected:
+                        logger.info(f"starting ticker. attempt#{attempt_no}")
+                        self.start_kiteticker(access_token)
+                        time.sleep(30)
+                        attempt_no += 1
                     self.is_running = True
-                time.sleep(10)
 
         def update_redis():
             if cur_queue:
@@ -131,10 +136,12 @@ class KiteSocket:
             suspend_ticker()
             start_ticker()
 
+
     def stop(self):
         if self.kws:
             self.kws.close()
         self.is_running = False
+        self.connected = False
         self.inst_symbol_dict = None
 
     def get_inst(self):
