@@ -142,7 +142,7 @@ class KiteSocket:
             start_ticker()
 
     @staticmethod
-    def restart_program(self):
+    def restart_program():
         """Restart the current process"""
         logger.info("Restarting Flask service for a new session...")
         os.execv(sys.executable, ['python'] + sys.argv)  # Restart the Python process
