@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import pandas as pd
-from hist_quote import HistQuote
-from live_quote import LiveQuote
+from .hist_quote import HistQuote
+from .live_quote import LiveQuote
 import datetime as dt
 from common.expiry import Expiry
 
