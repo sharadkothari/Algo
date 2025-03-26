@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 import pandas as pd
-from .hist_quote import HistQuote
-from .live_quote import LiveQuote
+from s_stocks.spreads.hist_quote import HistQuote
+from s_stocks.spreads.live_quote import LiveQuote
 import datetime as dt
 from common.expiry import Expiry
-
+import numpy as np
 
 @dataclass
 class QuoteLeg:
@@ -42,6 +42,34 @@ class Spread:
         df = self.quote.quote(**kwargs)
         self.legs.append(QuoteLeg(**(kwargs | {"df": df})))
 
+    def compute_spread(self, segmented = False):
+        # Collect unique datetime values
+        all_times = pd.concat([leg.df for leg in self.legs])["date"].unique()
+        all_times = np.sort(pd.to_datetime(all_times))
+
+        spread_df = {'all': pd.DataFrame(), 'pe':pd.DataFrame(), 'ce':pd.DataFrame()}
+
+        for leg in self.legs:
+            df = leg.df.copy()
+            df.loc[:, ['open', 'high', 'low', 'close']] *= leg.multiplier
+            df = leg.df.set_index("date").reindex(all_times).ffill()  # Align timestamps
+
+            key = leg.opt_type.lower() if segmented else 'all'
+            spread_df[key] = spread_df[key].add(df, fill_value=0) if not spread_df[key].empty else df
+            if not segmented:
+                self.add_vwap(spread_df[key])
+
+        return spread_df
+
+    @staticmethod
+    def add_vwap(df):
+        vol = df['volume'].values
+        price = (df['high'].values + df['low'].values) / 2
+        cumulative_vol_price = np.add.accumulate(vol * price)
+        cumulative_vol = np.add.accumulate(vol)
+        print(cumulative_vol_price / cumulative_vol)
+        df['vwap'] = cumulative_vol_price / cumulative_vol
+
     def get_underlying_quote(self, uix):
         if uix not in self.uq:
             self.uq[uix] = self.quote.quote(uix)
@@ -55,6 +83,6 @@ class Spread:
 
 
 if __name__ == '__main__':
-    s = Spread(live=False, date=dt.date(2025, 3, 17))
+    s = Spread(live=False, date=dt.date(2025, 3, 26))
     s.add_leg("NN", "d0", "CE", 1)
     s.add_leg("NN", "d0", "PE", 1)
