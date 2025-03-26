@@ -1,0 +1,103 @@
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import pandas as pd
+from s_stocks.spreads.spread import Spread
+import datetime as dt
+
+
+class Chart:
+
+    def __init__(self, data_loader):
+        self.data_loader = data_loader
+        self.spread: Spread = self.data_loader.spread
+
+    def left_axis(self):
+        axis_list = []
+        line_color = {'all': "#0000ff", "pe": "#DC143C", "ce": "#33cc33"}
+        sdf = self.spread.compute_spread(by_option=self.data_loader.by_option)
+        for key, df in sdf.items():
+            if not df.empty:
+                opt_types = ['pe', 'ce'] if key == "all" else key
+                if key == 'all':
+                    axis_list.append(go.Scatter(x=df['date'], y=df['vwap'], mode='lines', line=dict(color="#F5B31E"),
+                                                name='vwap', hoverinfo='none'))
+                close_values = [leg.df['close'].reset_index(drop=True) for leg in self.spread.legs if leg.opt_type.lower() in opt_types]
+                close_df = pd.DataFrame(close_values).T
+                all_close_join = close_df.apply(lambda row: " | ".join(row.astype(str)), axis=1).values
+                axis_list.append(go.Scatter(
+                    x=df['date'], y=df['close'], mode='lines', name='spread',
+                    line=dict(color=line_color[key]), customdata=all_close_join,
+                    hovertemplate=  '%{y:.1f} <br>%{customdata} <br>'))
+        return axis_list
+
+    def right_axis(self):
+        axis_list = []
+        udf = self.spread.get_underlying_quote(uix=self.data_loader.uix)
+        axis_list.append(go.Scatter(x=udf['date'], y=udf['close'].expanding().mean(), mode='lines',
+                                    line=dict(color="#A9A9A9", dash='dot'), name='avg', hoverinfo='none'))
+        axis_list.append(go.Scatter(x=udf['date'], y=udf['close'], mode='lines', line=dict(color="#A9A9A9"),
+                                    name='index', hovertemplate='%{y:.0f}'))
+        return axis_list
+
+    @staticmethod
+    def add_marker(fig, axis, secondary_y):
+        fig.add_scatter(
+            x=[axis.x[-1]], y=[axis.y[-1]],
+            mode='markers+text',
+            text=f"{axis.y[-1]:.1f}",
+            textfont=dict(color=axis.line.color or "#0000FF"),
+            textposition='middle right',
+            marker=dict(color=axis.line.color, size=12),
+            secondary_y=secondary_y
+        )
+
+    def update_layout(self, fig):
+        fig.update_layout(
+            title=f'{self.data_loader.expiry.underlying()} | {self.data_loader.expiry.dte(self.spread.date)}',
+            showlegend=False,
+            xaxis_rangeslider_visible=False,
+            margin=dict(l=50, r=0, t=10, b=0),
+            title_x=0.04,
+            title_y=0.97,
+            hovermode='x unified',
+            xaxis=dict(tickformat='%H:%M\n%a %d-%b-%Y')
+        )
+
+    def set_annotation(self, fig):
+        annotation = [f"{leg.opt_type} | {leg.strike} | {leg.multiplier}x" for leg in self.spread.legs]
+        annotation = ' <br>'.join(annotation)
+        fig.add_annotation(text=annotation, align='left', xref='paper', yref='paper',
+                           x=0.005, y=0.95, bordercolor='black', borderwidth=0, showarrow=False,
+                           bgcolor="#E6ECF5", )
+
+    @staticmethod
+    def empty_fig():
+        return {
+            "layout": {
+                "xaxis": {"visible": False}, "yaxis": {"visible": False},
+                "annotations": [{
+                    "text": dt.datetime.now().strftime("%a %d-%b-%y  %H:%M:%S"),
+                    "xref": "paper",
+                    "yref": "paper",
+                    "showarrow": False,
+                    "font": {"size": 30, }
+                }]
+            }}
+
+    def plot(self):
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        for left_axis in self.left_axis():
+            fig.add_trace(left_axis, secondary_y=False)
+            if self.spread.live:
+                self.add_marker(fig, left_axis, secondary_y=False)
+
+        for i, right_axis in enumerate(self.right_axis()):
+            fig.add_trace(right_axis, secondary_y=True)
+            if i == 0:
+                self.add_marker(fig, right_axis, secondary_y=True)
+
+        self.update_layout(fig)
+        self.set_annotation(fig)
+
+        return fig

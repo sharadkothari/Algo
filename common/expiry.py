@@ -1,7 +1,7 @@
 import json
 import datetime
 from common.config import data_dir
-
+import numpy as np
 
 class Expiry:
     def __init__(self, instrument):
@@ -60,8 +60,16 @@ class Expiry:
         atm_price = int(round(price / strike_width) * strike_width)
         return atm_price + (strike_ix * strike_width * {"PE": -1, "CE": 1}[opt_type])
 
+    def dte(self, date):
+        holidays = [datetime.datetime.strptime(date, "%d-%b-%Y").date() for date in self.holidays]
+        holidays = np.array(holidays, dtype='datetime64[D]')
+        expiry_date = self.get_expiry(date)
+        return np.busday_count(date, expiry_date, holidays=holidays)
+
+    def underlying(self):
+        return self.derivative_data[self.instrument]['underlying']
 
 if __name__ == "__main__":
-    e = Expiry("SX")
-    print(e.get_exp_str(datetime.date(2025, 3, 11)))
+    e = Expiry("NN")
+    print(e.dte(datetime.date(2025,3,26)))
 

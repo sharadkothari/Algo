@@ -42,7 +42,7 @@ class Spread:
         df = self.quote.quote(**kwargs)
         self.legs.append(QuoteLeg(**(kwargs | {"df": df})))
 
-    def compute_spread(self, segmented = False):
+    def compute_spread(self, by_option = False):
         # Collect unique datetime values
         all_times = pd.concat([leg.df for leg in self.legs])["date"].unique()
         all_times = np.sort(pd.to_datetime(all_times))
@@ -52,12 +52,15 @@ class Spread:
         for leg in self.legs:
             df = leg.df.copy()
             df.loc[:, ['open', 'high', 'low', 'close']] *= leg.multiplier
-            df = leg.df.set_index("date").reindex(all_times).ffill()  # Align timestamps
+            df = df.set_index("date").reindex(all_times).ffill()  # Align timestamps
 
-            key = leg.opt_type.lower() if segmented else 'all'
+            key = leg.opt_type.lower() if by_option else 'all'
             spread_df[key] = spread_df[key].add(df, fill_value=0) if not spread_df[key].empty else df
-            if not segmented:
+            if not by_option:
                 self.add_vwap(spread_df[key])
+
+        for k,df in spread_df.items():
+            df.reset_index(inplace=True)
 
         return spread_df
 
@@ -67,7 +70,6 @@ class Spread:
         price = (df['high'].values + df['low'].values) / 2
         cumulative_vol_price = np.add.accumulate(vol * price)
         cumulative_vol = np.add.accumulate(vol)
-        print(cumulative_vol_price / cumulative_vol)
         df['vwap'] = cumulative_vol_price / cumulative_vol
 
     def get_underlying_quote(self, uix):
@@ -86,3 +88,4 @@ if __name__ == '__main__':
     s = Spread(live=False, date=dt.date(2025, 3, 26))
     s.add_leg("NN", "d0", "CE", 1)
     s.add_leg("NN", "d0", "PE", 1)
+    dfs = s.compute_spread()
