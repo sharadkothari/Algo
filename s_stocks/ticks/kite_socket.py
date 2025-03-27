@@ -11,7 +11,7 @@ from common.my_logger import logger
 from common.trading_hours import TradingHours
 from common.telegram_bot import TelegramBotStocks
 import os
-import sys
+import signal
 
 with open(data_dir / f'brokers.json', 'r') as f:
     broker_data = json.loads(f.read())
@@ -48,7 +48,6 @@ class KiteSocket:
 
     def start_kiteticker(self, access_token):
         access_token = access_token if access_token else self.get_access_token()
-        print("details", access_token, self.api_key, flush=True, )
         self.kws = KiteTicker(self.api_key, access_token)
         self.kite.set_access_token(access_token)
 
@@ -63,21 +62,27 @@ class KiteSocket:
             self.connected = True
 
         def on_ticks(ws, ticks):
+            _ = ws
             cur_tick = {self.inst_symbol_dict.get(tick["instrument_token"], "NA"): tick for tick in ticks}
             self.tick_queue.put(cur_tick)
             self.ticks |= cur_tick
 
         def on_close(ws, code, reason):
+            _ = code
             logger.info(f"WebSocket closed: {reason}")
             ws.stop_retry()
 
         def on_error(ws, code, reason):
+            _ = ws
+            _ = code
             logger.error(f"WebSocket Error: {reason}")
 
         def on_reconnect(ws, attempts):
+            _ = ws
             logger.info(f"Reconnecting... Attempt {attempts}")
 
         def on_noreconnect(ws):
+            _ = ws
             logger.info("Reconnect failed. Exiting.")
 
         # Define WebSocket event handlers
@@ -145,7 +150,8 @@ class KiteSocket:
     def restart_program():
         """Restart the current process"""
         logger.info("Restarting Flask service for a new session...")
-        os.execv(sys.executable, ['python'] + sys.argv)  # Restart the Python process
+        # os.execv(sys.executable, ['python'] + sys.argv)  # Restart the Python process
+        os.kill(os.getppid(), signal.SIGHUP)
 
     def stop(self):
         if self.kws:
