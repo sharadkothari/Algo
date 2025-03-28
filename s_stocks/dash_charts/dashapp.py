@@ -32,10 +32,12 @@ class DashApp:
                 com.btn_by_opt,
                 com.btn_strike,
                 com.btn_legs,
-                com.btn_grp_date
+                com.btn_grp_date,
+                com.btn_grp_time
             ]),
             self.lh.context_section([dcc.Graph(id='graph', style={'width': '100vw', 'height': '90vh'})]),
             com.legs_modal,
+            com.intervals,
         ])
 
         register_callbacks(self.app, data=self.data, chart=self.chart)

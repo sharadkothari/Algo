@@ -21,13 +21,14 @@ class Chart:
                 if key == 'all':
                     axis_list.append(go.Scatter(x=df['date'], y=df['vwap'], mode='lines', line=dict(color="#F5B31E"),
                                                 name='vwap', hoverinfo='none'))
-                close_values = [leg.df['close'].reset_index(drop=True) for leg in self.spread.legs if leg.opt_type.lower() in opt_types]
+                close_values = [leg.df['close'].reset_index(drop=True) for leg in self.spread.legs if
+                                leg.opt_type.lower() in opt_types]
                 close_df = pd.DataFrame(close_values).T
                 all_close_join = close_df.apply(lambda row: " | ".join(row.astype(str)), axis=1).values
                 axis_list.append(go.Scatter(
                     x=df['date'], y=df['close'], mode='lines', name='spread',
                     line=dict(color=line_color[key]), customdata=all_close_join,
-                    hovertemplate=  '%{y:.1f} <br>%{customdata} <br>'))
+                    hovertemplate='%{y:.1f} <br>%{customdata} <br>'))
         return axis_list
 
     def right_axis(self):
@@ -84,6 +85,11 @@ class Chart:
                 }]
             }}
 
+    def add_vertical_line(self, fig):
+        if self.data_loader.static_strike:
+            vertical_line_time = pd.Timestamp(f'{self.data_loader.date} {self.data_loader.track_time_start}')
+            fig.add_vline(x=vertical_line_time, line=dict(color="red", width=3, dash="dash"))
+
     def plot(self):
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -99,5 +105,6 @@ class Chart:
 
         self.update_layout(fig)
         self.set_annotation(fig)
+        self.add_vertical_line(fig)
 
         return fig

@@ -16,3 +16,6 @@
     opacity: 0.9; /* Slight transparency */
     z-index: 9999; /* Ensure it's on top */
 }
+.DateInput_input {
+    height: 35px !important;
+}

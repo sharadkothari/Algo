@@ -9,6 +9,11 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
         fig = chart.plot()
         set_props('graph', {'figure': fig})
 
+    @app.callback(Output('graph', 'figure'),
+                  Input('interval', 'n_intervals'))
+    def update_graph(n):
+        return chart.plot()
+
     @app.callback(
         Output('btn_uix', 'children'),
         Input('btn_uix', 'n_clicks'),
@@ -87,3 +92,24 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
         data.change_date(delta=date_delta, new_date=date)
         update_chart(new_date=True)
         return data.date.isoformat()
+
+    @app.callback(
+        Output('inp_time_start', 'value'),
+        Output('inp_time_end', 'value'),
+        Input('btn_time', 'n_clicks'),
+        State('inp_time_start', 'value'),
+        State('inp_time_end', 'value'),
+        prevent_initial_call=True)
+    def update_track_time(btn_set, start, end):
+        data.set_track_time(start, end)
+        update_chart()
+        return data.track_time_start, data.track_time_end
+
+    @app.callback(
+        Output('btn_strike', 'children'),
+        Input('btn_strike', 'n_clicks'),
+        prevent_initial_call=True)
+    def update_strike(btn1):
+        data.toggle_static_strike()
+        update_chart()
+        return data.txt_strike

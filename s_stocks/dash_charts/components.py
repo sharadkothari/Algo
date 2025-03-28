@@ -66,3 +66,18 @@ class Components:
             id=_id,
             disabled_days=self.data.expiry.holidays,
         )
+
+    @property
+    def btn_grp_time(self):
+        return dbc.ButtonGroup([
+            dbc.Input(type="time", value=self.data.track_time_start, id="inp_time_start"),
+            dbc.Button("set️", 'btn_time', color="secondary"),
+            dbc.Input(type="time", value=self.data.track_time_end, id="inp_time_end"),
+        ])
+
+    @property
+    def intervals(self):
+        return dcc.Interval(
+            id='interval',
+            interval= 1 * 1000 * (1 if self.data.spread.live else 1000),  # in milliseconds
+            n_intervals=0)

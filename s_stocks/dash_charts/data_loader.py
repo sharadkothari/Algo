@@ -11,10 +11,10 @@ redis_client = get_redis_client()
 
 class DataLoader:
 
+
     def __init__(self, app_id):
         self.config_key = "plotly:config:json"
         self.app_id = app_id
-        self.static_strike = False
         self.config = None
         self.spread = None
         self.expiry = None
@@ -43,6 +43,8 @@ class DataLoader:
             'uix': "NN",
             "by_option": False,
             'date': dt.date.today().isoformat(),
+            'track_time': {"start": "09:15", "end": "15:30"},
+            "static_strike": False,
             'legs': [
                 {'opt_type': 'PE', 'strike': "d0", 'multiplier': 1},
                 {'opt_type': 'CE', 'strike': "d0", 'multiplier': 1}
@@ -57,7 +59,12 @@ class DataLoader:
     def set_spread_legs(self):
         self.spread.legs = []
         for leg in self.config['legs']:
-            self.spread.add_leg(**(leg | {"uix": self.config["uix"]}))
+            if self.static_strike and leg['strike'][0] == "d":
+                strike = self.spread.get_static_strike(uix=self.uix, opt_type=leg["opt_type"], strike=leg["strike"],
+                                                       time=dt.datetime.strptime(self.track_time_start, '%H:%M').time())
+            else:
+                strike = leg['strike']
+            self.spread.add_leg(**(leg | {"uix": self.config["uix"]} | {'strike': strike}))
 
     def toggle_uix(self):
         self.config["uix"] = {"NN": "SX", "SX": "NN"}[self.config["uix"]]
@@ -68,6 +75,11 @@ class DataLoader:
     def toggle_by_option(self):
         self.config["by_option"] ^= 1  # Toggles the value
         self.redis_set("by_option")
+
+    def toggle_static_strike(self):
+        self.config["static_strike"] = not self.config["static_strike"]
+        self.redis_set("static_strike")
+        self.set_spread_legs()
 
     def change_date(self, delta=None, new_date=None):
         if not self.config["live"]:
@@ -94,36 +106,37 @@ class DataLoader:
         self.redis_set("legs")
         return self.config["legs"]
 
+    def set_track_time(self, start, end):
+        self.config["track_time"] = {"start": start, "end": end}
+        self.redis_set("track_time")
+        if self.static_strike:
+            self.set_spread_legs()
+
     def redis_set(self, key):
         redis_client.json().set(self.config_key, f"$.{self.app_id}.{key}", self.config[key])
 
-    @property
-    def legs(self):
-        return self.config["legs"]
+    def __getattr__(self, name):
+        match name:
+            case "date":
+                return dt.datetime.fromisoformat(self.config["date"]).date()
+            case "track_time_start":
+                return self.config.get("track_time", self.get_default_config()["track_time"])["start"]
+            case "track_time_end":
+                return self.config.get("track_time", self.get_default_config()["track_time"])["end"]
+            case "txt_strike":
+                return 'η' if self.static_strike else 'μ'  # "eta" (η) / "μ" (mu)
+            case "txt_by_option":
+                return ["Σ", "Ͽ"][int(self.by_option)]  # sigma & anti sigma
+            case "columns":
+                return [{'id': key, 'name': key} for key in self.get_default_config()['legs'][0]]
+            case "static_strike":
+                return self.config.get("static_strike", False)
 
-    @property
-    def columns(self):
-        return [{'id': key, 'name': key} for key in self.get_default_config()['legs'][0]]
 
-    @property
-    def txt_strike(self):
-        return 'η' if self.static_strike else 'μ'  # "eta" (η) / "μ" (mu)
+        if name in self.config and name not in ["date"]:
+            return self.config[name]
 
-    @property
-    def txt_by_option(self):
-        return ["Σ", "Ͽ"][int(self.by_option)]  # sigma & anti sigma
-
-    @property
-    def uix(self):
-        return self.config.get("uix")
-
-    @property
-    def by_option(self):  # separate chart for opt_type
-        return self.config.get("by_option", False)
-
-    @property
-    def date(self):
-        return dt.datetime.fromisoformat(self.config["date"]).date()
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,8 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 module_name = Path(__file__).stem
 port = 5025
 
-dash1 = DashApp(app_name="dash1", server=app, url_base_pathname="/dash1/", debug=True)
+for dash_app in ('dash1', "dash2"):
+    DashApp(app_name=dash_app, server=app, url_base_pathname=f"/{dash_app}/", debug=True)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=True)
