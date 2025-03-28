@@ -1,0 +1,18 @@
+.Select-menu-outer {
+  display: block !important;
+}
+
+.dash-table-container .dropdown {
+  position: static;
+}
+
+/* Move Dash Debug Menu to the Top Right */
+._dash-debug-menu {
+    top: 10px !important;
+    right: 10px !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: scale(0.9);  /* Shrink menu */
+    opacity: 0.9; /* Slight transparency */
+    z-index: 9999; /* Ensure it's on top */
+}

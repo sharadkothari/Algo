@@ -61,13 +61,16 @@ class Expiry:
         return atm_price + (strike_ix * strike_width * {"PE": -1, "CE": 1}[opt_type])
 
     def dte(self, date):
-        holidays = [datetime.datetime.strptime(date, "%d-%b-%Y").date() for date in self.holidays]
-        holidays = np.array(holidays, dtype='datetime64[D]')
+        holidays = np.array(self.holidays, dtype='datetime64[D]')
         expiry_date = self.get_expiry(date)
         return np.busday_count(date, expiry_date, holidays=holidays)
 
     def underlying(self):
         return self.derivative_data[self.instrument]['underlying']
+
+    def bus_day(self, date, delta):
+        holidays = np.array(self.holidays, dtype='datetime64[D]')
+        return np.busday_offset(date, delta, roll='forward',  holidays=holidays).astype('M8[D]').astype(datetime.date)
 
 if __name__ == "__main__":
     e = Expiry("NN")

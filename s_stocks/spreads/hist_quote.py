@@ -11,6 +11,7 @@ class HistQuote:
     def __init__(self):
         self.date = None
         self.df = None
+        self.exp_str = None
         self.underlying = {i: Expiry(i) for i in ("NN", "SX")}
 
     def set_date(self, date: dt.date):

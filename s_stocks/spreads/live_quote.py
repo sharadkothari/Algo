@@ -13,6 +13,9 @@ class LiveQuote:
         self.redis = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
         self.underlying = {i: Expiry(i) for i in ("NN", "SX")}
 
+    def set_date(self, date):
+        ... # dummy for consistency with hist_quote (in spread)
+
     def quote(self, uix, opt_type=None, strike=None, **kwargs):
         date_str = self.date.strftime('%Y%m%d')
         dd = self.underlying[uix].get_derivative_data()

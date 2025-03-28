@@ -50,4 +50,3 @@ class TradingHours:
 
 if __name__ == "__main__":
     th = TradingHours()
-    print(th.time_until_next_open())

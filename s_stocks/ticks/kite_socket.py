@@ -108,7 +108,6 @@ class KiteSocket:
                 logger.info(
                     f'suspending ticker till {next_open_time:%d-%b-%Y %H:%M} | {seconds_until_open:.0f} seconds')
                 time.sleep(seconds_until_open)
-                logger.info('Resuming... Restarting the service now.')
                 self.restart_program()  # needed due to Kiteticker uses twisted
 
         def start_ticker():
@@ -118,7 +117,7 @@ class KiteSocket:
                     while not self.connected:
                         logger.info(f"starting ticker. attempt#{attempt_no}")
                         self.start_kiteticker(access_token)
-                        time.sleep(30)
+                        time.sleep(5)
                         attempt_no += 1
                     self.is_running = True
 
@@ -152,6 +151,7 @@ class KiteSocket:
         logger.info("Restarting Flask service for a new session...")
         # os.execv(sys.executable, ['python'] + sys.argv)  # Restart the Python process
         os.kill(os.getppid(), signal.SIGHUP)
+        time.sleep(20)
 
     def stop(self):
         if self.kws:

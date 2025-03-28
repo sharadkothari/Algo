@@ -11,6 +11,7 @@ import redis
 from urllib.parse import unquote
 import re
 import os
+import socket
 
 app = Flask(__name__, template_folder=".", static_folder=".")
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -150,6 +151,7 @@ def get_routes():
 
 @app.route("/health", methods=["GET"])
 def health_check():
+    redis_client.hset("services", module_name, f'{socket.gethostname()}:{port}')
     return jsonify({"status": "ok"}), 200
 
 
