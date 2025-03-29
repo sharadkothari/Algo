@@ -4,7 +4,7 @@ from common.expiry import Expiry
 import redis
 from common.config import redis_host, redis_port, redis_db
 import json
-
+from common.my_logger import logger
 
 class LiveQuote:
 

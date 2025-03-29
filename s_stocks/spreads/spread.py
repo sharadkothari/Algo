@@ -57,7 +57,7 @@ class Spread:
         for leg in self.legs:
             df = leg.df.copy()
             df.loc[:, ['open', 'high', 'low', 'close']] *= leg.multiplier
-            df = df.set_index("date").reindex(all_times).ffill()  # Align timestamps
+            df = df.set_index("date").reindex(all_times).ffill().infer_objects(copy=False)  # Align timestamps
 
             key = leg.opt_type.lower() if by_option else 'all'
             spread_df[key] = spread_df[key].add(df, fill_value=0) if not spread_df[key].empty else df
@@ -75,7 +75,8 @@ class Spread:
         price = (df['high'].values + df['low'].values) / 2
         cumulative_vol_price = np.add.accumulate(vol * price)
         cumulative_vol = np.add.accumulate(vol)
-        df['vwap'] = cumulative_vol_price / cumulative_vol
+        safe_cumulative_vol = np.maximum(cumulative_vol, 0.1)
+        df['vwap'] = cumulative_vol_price / safe_cumulative_vol
 
     def get_underlying_quote(self, uix):
         return self.quote.quote(uix)
@@ -88,7 +89,7 @@ class Spread:
 
 
 if __name__ == '__main__':
-    s = Spread(live=False, date=dt.date(2025, 3, 26))
+    s = Spread(live=True, date=dt.date(2025, 3, 26))
     s.add_leg("NN", "d0", "CE", 1)
     s.add_leg("NN", "d0", "PE", 1)
     dfs = s.compute_spread()

@@ -4,6 +4,9 @@ from common.expiry import Expiry
 from common.config import parquet_dir
 import os
 import time
+from common.my_logger import logger
+
+_ = logger
 
 
 class HistQuote:
@@ -18,7 +21,7 @@ class HistQuote:
         self.date = date
         self.exp_str = date.strftime("%Y%m%d")
         self.df = self._load_parquet_file()
-        if not self.df is None:
+        if self.df is not None:
             self.df = pd.concat([self.df, self.get_dynamic_strikes()], ignore_index=True)
 
     def _load_parquet_file(self):
@@ -33,6 +36,7 @@ class HistQuote:
                         (df.ticker.str.startswith(exp_str))]
                 df['strike'] = df.ticker[df.ticker.str[-2:].isin(['CE', 'PE'])].str[len(exp_str):-2]
                 dfs.append(df)
+
         if dfs:
             return pd.concat(dfs, ignore_index=True)
 
@@ -62,12 +66,14 @@ class HistQuote:
                     .rename(columns={"new_ticker": "ticker"}))
 
     def quote(self, uix, opt_type=None, strike=None, **kwargs):
-        exp = self.underlying[uix]
-        if opt_type is None:
-            return self.df[self.df.ticker == exp.get_derivative_data()["underlying"]]
-        elif strike is not None:
-            ticker = f'{exp.get_exp_str(self.date)}{strike}{opt_type}'
-            return self.df[self.df.ticker == ticker]
+        _ = kwargs
+        if self.df is not None:
+            exp = self.underlying[uix]
+            if opt_type is None:
+                return self.df[self.df.ticker == exp.get_derivative_data()["underlying"]]
+            elif strike is not None:
+                ticker = f'{exp.get_exp_str(self.date)}{strike}{opt_type}'
+                return self.df[self.df.ticker == ticker]
 
 
 if __name__ == '__main__':

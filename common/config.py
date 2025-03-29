@@ -1,5 +1,6 @@
 from pathlib import Path
 import redis
+import os
 
 server_url = 'http://100.123.122.115'
 redis_host = '100.123.122.115'
@@ -13,7 +14,11 @@ base_dir_prv = Path(__file__).resolve().parent.parent.parent.parent / 'OneDrive/
 data_dir = base_dir / 'common/data/'
 
 bhavcopy_dir = base_dir_prv / 'bhavcopy'
-parquet_dir = base_dir_prv / 'screener/parquet'
+
+if os.getenv("DOCKERIZED"):
+    parquet_dir = Path("/app/parquet")  # Docker path
+else:
+    parquet_dir = base_dir_prv / 'screener/parquet'
 
 
 def get_redis_client():
@@ -21,6 +26,4 @@ def get_redis_client():
 
 
 if __name__ == "__main__":
-    print(base_dir, base_dir_prv, bhavcopy_dir, data_dir)
-    #print(str(Path(__file__).resolve().parent.parent.parent.parent / 'Algo'))
-    #print(base_dir_prv)
+    print(parquet_dir)
