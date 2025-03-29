@@ -91,6 +91,10 @@ class Chart:
             fig.add_vline(x=vertical_line_time, line=dict(color="red", width=3, dash="dash"))
 
     def plot(self):
+
+        if self.data_loader.live and not self.data_loader.th.is_open():
+            return self.empty_fig()
+
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
         for left_axis in self.left_axis():

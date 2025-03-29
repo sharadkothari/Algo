@@ -30,12 +30,22 @@ class DashApp:
             self.lh.top_panel([
                 com.btn_uix,
                 com.btn_by_opt,
-                com.btn_strike,
                 com.btn_legs,
+                com.div_space,
+
                 com.btn_grp_date,
-                com.btn_grp_time
+                com.div_space,
+
+                com.btn_strike, com.tt_btn_strike,
+                com.btn_grp_time,
+                com.div_space,
+
+                com.ddn_strategy,
+                com.div_space,
+
+                com.btn_quote,
             ]),
-            self.lh.context_section([dcc.Graph(id='graph', style={'width': '100vw', 'height': '90vh'})]),
+            self.lh.context_section([dcc.Graph(id='graph',style={'height': '92vh'})]),
             com.legs_modal,
             com.intervals,
         ])

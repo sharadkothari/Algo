@@ -6,7 +6,9 @@ services:
       context: .
       dockerfile: Dockerfile_base
     image: monorepo_base #give the base image a name.
-    command: "true" #keep the image from running immediately.
+    command: tail -f /dev/null
+    env_file:
+      - .env
 
 
   nginx:
@@ -31,6 +33,7 @@ services:
       - stocks_candles
       - stocks_dynamic_candles
       - stocks_ticking
+      - stocks_dash_charts
 
 networks:
   default:

@@ -6,16 +6,15 @@
   position: static;
 }
 
-/* Move Dash Debug Menu to the Top Right */
-._dash-debug-menu {
-    top: 10px !important;
-    right: 10px !important;
-    bottom: auto !important;
-    left: auto !important;
-    transform: scale(0.9);  /* Shrink menu */
-    opacity: 0.9; /* Slight transparency */
-    z-index: 9999; /* Ensure it's on top */
-}
 .DateInput_input {
     height: 35px !important;
+}
+
+.dash-debug-menu__outer {
+    top: auto !important;
+    right: 5px !important;
+    left: auto !important;
+    bottom: 5px !important;
+    height: 30px !important; /* Adjust height as needed */
+
 }

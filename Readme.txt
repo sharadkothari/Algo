@@ -12,3 +12,8 @@ ____
 To check and close port
 1. lsof -i :<port>
 2. kill -9 <pid>
+___
+* till permanent solution is found as docker-compose not connecting
+docker update --restart=always redis-stack
+docker exec -it redis-stack redis-cli CONFIG SET notify-keyspace-events Khg
+docker exec -it redis-stack redis-cli CONFIG SET appendonly no

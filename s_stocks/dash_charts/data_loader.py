@@ -5,19 +5,89 @@ from common.config import get_redis_client
 from redis.commands.json.path import Path
 import datetime as dt
 from common.expiry import Expiry
+from common.trading_hours import TradingHours
 
 redis_client = get_redis_client()
 
 
-class DataLoader:
+class ConfigPropertiesMixin:
 
+    def __init__(self):
+        self.config = None
+
+    def get_default_config(self):
+        return {
+            'live': False,
+            'uix': "NN",
+            "by_option": False,
+            'date': (dt.date.today()-dt.timedelta(days=1)).isoformat(),
+            'track_time': {"start": "09:15", "end": "15:30"},
+            "static_strike": False,
+            'legs': [
+                {'opt_type': 'PE', 'strike': "d0", 'multiplier': 1},
+                {'opt_type': 'CE', 'strike': "d0", 'multiplier': 1}
+            ]
+        }
+
+    @staticmethod
+    def default_date():
+        ...
+
+    @property
+    def columns(self):
+        return [{'id': key, 'name': key} for key in self.get_default_config()['legs'][0]]
+
+    @property
+    def live(self):
+        return self.config["live"]
+
+    @property
+    def uix(self):
+        return self.config["uix"]
+
+    @property
+    def by_option(self):
+        return self.config["by_option"]
+
+    @property
+    def txt_by_option(self):
+        return ["Σ", "Ͽ"][int(self.by_option)]
+
+    @property
+    def date(self):
+        return dt.datetime.fromisoformat(self.config["date"]).date()
+
+    @property
+    def track_time_start(self):
+        return self.config.get("track_time", self.get_default_config()["track_time"])["start"]
+
+    @property
+    def track_time_end(self):
+        return self.config.get("track_time", self.get_default_config()["track_time"])["end"]
+
+    @property
+    def txt_strike(self):
+        return 'μ' if self.static_strike else 'η'
+
+    @property
+    def static_strike(self):
+        return self.config.get("static_strike", False)
+
+    @property
+    def legs(self):
+        return self.config.get("legs", False)
+
+
+class DataLoader(ConfigPropertiesMixin):
 
     def __init__(self, app_id):
+        super().__init__()
         self.config_key = "plotly:config:json"
         self.app_id = app_id
-        self.config = None
         self.spread = None
         self.expiry = None
+        self.th = TradingHours()
+        self.strategies = self.get_strategies()
         self.load_data()
 
     def load_data(self):
@@ -35,21 +105,6 @@ class DataLoader:
         if not redis_client.exists(self.config_key):
             redis_client.json().set(self.config_key, Path.root_path(), {})
         redis_client.json().set(self.config_key, f"$.{self.app_id}", config)
-
-    @staticmethod
-    def get_default_config():
-        return {
-            'live': False,
-            'uix': "NN",
-            "by_option": False,
-            'date': dt.date.today().isoformat(),
-            'track_time': {"start": "09:15", "end": "15:30"},
-            "static_strike": False,
-            'legs': [
-                {'opt_type': 'PE', 'strike': "d0", 'multiplier': 1},
-                {'opt_type': 'CE', 'strike': "d0", 'multiplier': 1}
-            ]
-        }
 
     def init_spread(self):
         self.spread = Spread(live=self.config["live"],
@@ -79,6 +134,12 @@ class DataLoader:
     def toggle_static_strike(self):
         self.config["static_strike"] = not self.config["static_strike"]
         self.redis_set("static_strike")
+        self.set_spread_legs()
+
+    def toggle_quote(self):
+        self.config["live"] = not self.config["live"]
+        self.redis_set("live")
+        self.spread.live = self.config["live"]
         self.set_spread_legs()
 
     def change_date(self, delta=None, new_date=None):
@@ -115,29 +176,28 @@ class DataLoader:
     def redis_set(self, key):
         redis_client.json().set(self.config_key, f"$.{self.app_id}.{key}", self.config[key])
 
-    def __getattr__(self, name):
-        match name:
-            case "date":
-                return dt.datetime.fromisoformat(self.config["date"]).date()
-            case "track_time_start":
-                return self.config.get("track_time", self.get_default_config()["track_time"])["start"]
-            case "track_time_end":
-                return self.config.get("track_time", self.get_default_config()["track_time"])["end"]
-            case "txt_strike":
-                return 'η' if self.static_strike else 'μ'  # "eta" (η) / "μ" (mu)
-            case "txt_by_option":
-                return ["Σ", "Ͽ"][int(self.by_option)]  # sigma & anti sigma
-            case "columns":
-                return [{'id': key, 'name': key} for key in self.get_default_config()['legs'][0]]
-            case "static_strike":
-                return self.config.get("static_strike", False)
+    @staticmethod
+    def get_strategies():
+        spread = {
+            'ATM': [[0, 1]],
+            'OTM': [[1, 1]],
+            '10x1_15x-2': [[10, 1], [15, -2]],
+            '8x1_11x-2': [[8, 1800], [11, -3600]],
+        }
+        strategy = {}
+        for k, v in spread.items():
+            strategy[k] = []
+            for opt_type in ('PE', 'CE'):
+                for i in v:
+                    strategy[k].append({'opt_type': opt_type, 'strike': f"d{i[0]}", 'multiplier': i[1]})
+        return strategy
 
-
-        if name in self.config and name not in ["date"]:
-            return self.config[name]
-
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+    def apply_strategy(self, strategy):
+        if strategy in self.strategies:
+            self.update_legs(self.strategies[strategy])
+            return True
 
 
 if __name__ == "__main__":
     d = DataLoader(1)
+    print(d.get_strategies())

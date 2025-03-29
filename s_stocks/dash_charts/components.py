@@ -11,6 +11,11 @@ class Components:
         ...
 
     @property
+    def btn_quote(self):
+        values = [["H", "warning"], ["L", "success"]][self.data.live]
+        return dbc.Button(id="btn_quote", children=values[0],  color=values[1])
+
+    @property
     def btn_uix(self):
         return dbc.Button(self.data.uix[0], id="btn_uix", n_clicks=0, outline=True, color="light")
 
@@ -21,6 +26,10 @@ class Components:
     @property
     def btn_strike(self):
         return dbc.Button(self.data.txt_strike, id="btn_strike", n_clicks=0, outline=True, color="light")
+
+    @property
+    def tt_btn_strike(self):
+        return dbc.Tooltip("Dynamic: η (eta) / Static: μ (mu)", target="btn_strike",  placement="bottom")
 
     @property
     def btn_legs(self):
@@ -80,4 +89,13 @@ class Components:
         return dcc.Interval(
             id='interval',
             interval= 1 * 1000 * (1 if self.data.spread.live else 1000),  # in milliseconds
-            n_intervals=0)
+            n_intervals=0, disabled=False)
+
+    @property
+    def ddn_strategy(self):
+        return dcc.Dropdown(
+            list(self.data.strategies),  '', placeholder="select strategy...", id='ddn_strategy',style={"width": "150px"})
+
+    @property
+    def div_space(self):
+        return html.Div(style={"width": "30px"})

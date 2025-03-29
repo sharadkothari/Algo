@@ -26,4 +26,4 @@ class LayoutHandler:
 
     @staticmethod
     def context_section(children):
-        return html.Div(children=children, style={"padding-top": "60px"})
+        return html.Div(children=children, style={"padding-top": "60px", "width": "100vw" })

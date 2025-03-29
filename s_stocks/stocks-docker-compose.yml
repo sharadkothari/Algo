@@ -60,3 +60,20 @@ services:
       - GUNICORN_BIND=0.0.0.0:5024
     depends_on:
       - monorepo_base
+
+  stocks_dash_charts:
+    build: ./dash_charts
+    container_name: stocks_dash_charts
+    restart: always
+    ports: [ "5025:5025" ]
+    networks: [ default ]
+    volumes:
+      - ./dash_charts:/app
+      - ../common:/app/common
+      - ../s_stocks/spreads:/app/s_stocks/spreads
+      - C:/Users/Sharad/OneDrive/Algo/screener/parquet:/app/parquet
+      - ../gunicorn_config.py:/app/gunicorn_config.py
+    environment:
+      - GUNICORN_BIND=0.0.0.0:5025
+    depends_on:
+      - monorepo_base

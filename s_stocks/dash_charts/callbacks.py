@@ -2,6 +2,7 @@ from dash import Input, Output, State, set_props, no_update, ctx
 from data_loader import DataLoader
 from chart import Chart
 import datetime as dt
+from dash.exceptions import PreventUpdate
 
 
 def register_callbacks(app, data: DataLoader, chart: Chart):
@@ -10,9 +11,11 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
         set_props('graph', {'figure': fig})
 
     @app.callback(Output('graph', 'figure'),
+                  Output('interval', 'disabled'),
                   Input('interval', 'n_intervals'))
     def update_graph(n):
-        return chart.plot()
+        auto_update = data.live and data.th.is_open()
+        return chart.plot(), not auto_update
 
     @app.callback(
         Output('btn_uix', 'children'),
@@ -58,13 +61,14 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
 
     @app.callback(
         Output('tbl_legs', 'data', allow_duplicate=True),
+        Output('ddn_strategy', 'value', allow_duplicate=True),
         Input('btn_legs_add', 'n_clicks'),
         Input('btn_legs_upd', 'n_clicks'),
         State('tbl_legs', 'data'),
         State('tbl_legs', 'columns'),
         prevent_initial_call=True
     )
-    def add_row(btn1, btn2, _data, columns):
+    def update_row(btn1, btn2, _data, columns):
         _ = btn1, btn2
         match ctx.triggered_id:
             case "btn_legs_add":
@@ -72,7 +76,7 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
             case "btn_legs_upd":
                 _data = data.update_legs(_data)
                 update_chart(data_change=True)
-        return _data
+        return _data, ""
 
     @app.callback(
         Output('dt_pick', 'date'),
@@ -113,3 +117,26 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
         data.toggle_static_strike()
         update_chart()
         return data.txt_strike
+
+    @app.callback(
+        Input('ddn_strategy', 'value'),
+        prevent_initial_call=True)
+    def update_strategy(strategy_value):
+        if len(strategy_value) == 0:
+            raise PreventUpdate
+        else:
+            if data.apply_strategy(strategy_value):
+                update_chart()
+
+    @app.callback(
+        Output('btn_quote', 'children'),
+        Output('btn_quote', 'color'),
+        Output('interval', 'disabled', allow_duplicate=True),
+        Input('btn_quote', 'n_clicks'),
+        prevent_initial_call=True)
+    def quote_type(n_clicks):
+        data.toggle_quote()
+        values = [["H", "warning"], ["L", "success"]][data.live]
+        auto_update = data.live and data.th.is_open()
+        update_chart()
+        return values[0], values[1], not auto_update
