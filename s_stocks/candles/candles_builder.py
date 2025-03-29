@@ -29,7 +29,8 @@ class Candles:
             wait_time = self.trading_hours.time_until_next_open().total_seconds()
             next_open_time = datetime.datetime.now() + datetime.timedelta(seconds=wait_time)
             if log_message:
-                logger.info(f"Resetting candles and suspending till {next_open_time:%d-%b-%Y %H:%M} | {wait_time:.0f}sec")
+                logger.info(
+                    f"Resetting candles and suspending till {next_open_time:%d-%b-%Y %H:%M} | {wait_time:.0f}sec")
             self.reset()
             time.sleep(wait_time)  # Wait until the market reopens
             if log_message:
@@ -46,11 +47,11 @@ class Candles:
         for symbol, symbol_tick in tick.items():
             timestamp_value = symbol_tick.get(self.timestamp_field)
             if not timestamp_value:
-                return
+                continue
 
             timestamp_value = datetime.datetime.fromisoformat(timestamp_value)
-            if timestamp_value.year <= 1970:
-                return
+            if timestamp_value.year <= 1970 or timestamp_value.time() <= self.trading_hours.start:
+                continue
 
             timestamp = int(timestamp_value.timestamp())
             candle_time = timestamp - (timestamp % self.timeframe)
