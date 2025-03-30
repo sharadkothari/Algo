@@ -2,6 +2,8 @@ from common.config import redis_host, redis_port, redis_db
 import redis
 import threading
 from common.my_logger import logger
+import re
+import requests
 
 
 class TelegramBot:
@@ -46,9 +48,28 @@ class TelegramBotMain(TelegramBot):
 
     def __init__(self):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
+        self.pattern = r"^/(start|stop) (\S+)"
 
     def process_messages(self, message):
-        self.send(f"got: {message['data']}")
+        def get_service_data():
+            response = requests.get("http://nginx/docker_db/services")
+            if response.ok:
+                return {item["name"]: {"id": item["containerId"], "status": item["status"][0]} for item in
+                        response.json()[0]}
+            else:
+                return {}
+
+        text = message['data']
+        match = re.match(self.pattern, text)
+        if match:
+            action, service = match.groups()
+            service_data = get_service_data()
+            if service in service_data:
+                self.send(f'{action} {service} {service_data[service]['status']}')
+            else:
+                self.send(f"{service} not found")
+        else:
+            self.send(f"main: {match.groups()}")
 
 
 class TelegramBotService(TelegramBot):
@@ -62,11 +83,10 @@ class TelegramBotService(TelegramBot):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
 
     def process_messages(self, message):
-        self.send(f"got: {message['data']}")
+        self.send(f"service: {message['data']}")
 
 
 class TelegramBotStocks(TelegramBot):
-
     consumer_name = "stocks"
     chat_id = -4626518827
 
@@ -81,7 +101,7 @@ class TelegramBotStocks(TelegramBot):
             case '/chat_id':
                 text = f'chat_id: {self.chat_id}'
             case _:
-                text = f'got: {message['data']}'
+                text = f'stocks: {message['data']}'
         self.send(text)
 
 

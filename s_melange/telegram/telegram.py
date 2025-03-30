@@ -59,7 +59,6 @@ def send():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
-    print(data)
     if not data:
         return jsonify({"error": "No data received"}), 400
     else:
