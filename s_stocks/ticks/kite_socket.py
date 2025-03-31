@@ -22,7 +22,7 @@ tbot = TelegramBotStocks()
 
 class KiteSocket:
 
-    def __init__(self, client_id: str = "RS5756"):
+    def __init__(self, client_id: str = "YM3006"):
         logger.info(f'initializing kite socket: {client_id}')
         self.inst_symbol_dict = None
         self.client_id = client_id

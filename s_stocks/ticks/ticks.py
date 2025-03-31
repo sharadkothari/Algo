@@ -7,7 +7,7 @@ app = Flask(__name__, template_folder=".", static_folder=".")
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 module_name = Path(__file__).stem
 port = 5021
-kws = KiteSocket(client_id="RS5756")
+kws = KiteSocket(client_id="YM3006")
 
 
 @app.route("/hello")
