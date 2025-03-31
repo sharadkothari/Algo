@@ -4,6 +4,7 @@ import threading
 from common.my_logger import logger
 import re
 import requests
+import json
 
 
 class TelegramBot:
@@ -26,6 +27,7 @@ class TelegramBot:
         self.outgoing_stream = "telegram_outgoing"
         self.redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
         pubsub = self.redis_client.pubsub()
+        pubsub.unsubscribe(f"{self.chat_id}")
         pubsub.subscribe(**{f"{self.chat_id}": self.process_messages})
         pubsub.run_in_thread(sleep_time=1)
 
@@ -34,9 +36,10 @@ class TelegramBot:
     def process_messages(self, message):
         ...
 
-    def send(self, message, chat_id=None):
+    def send(self, message, inline_keyboard=None, chat_id=None):
         chat_id = chat_id or self.chat_id
-        self.redis_client.xadd(self.outgoing_stream, {"chat_id": chat_id, "message": message}, maxlen=1000)
+        self.redis_client.xadd(self.outgoing_stream, {"chat_id": chat_id, "message": message,
+                                                      "inline_keyboard": json.dumps(inline_keyboard), }, maxlen=1000)
 
 
 class TelegramBotMain(TelegramBot):
@@ -48,28 +51,10 @@ class TelegramBotMain(TelegramBot):
 
     def __init__(self):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
-        self.pattern = r"^/(start|stop) (\S+)"
 
     def process_messages(self, message):
         def get_service_data():
-            response = requests.get("http://nginx/docker_db/services")
-            if response.ok:
-                return {item["name"]: {"id": item["containerId"], "status": item["status"][0]} for item in
-                        response.json()[0]}
-            else:
-                return {}
-
-        text = message['data']
-        match = re.match(self.pattern, text)
-        if match:
-            action, service = match.groups()
-            service_data = get_service_data()
-            if service in service_data:
-                self.send(f'{action} {service} {service_data[service]['status']}')
-            else:
-                self.send(f"{service} not found")
-        else:
-            self.send(f"main: {match.groups()}")
+            self.send(f"main: {message['data']}")
 
 
 class TelegramBotService(TelegramBot):
@@ -81,9 +66,55 @@ class TelegramBotService(TelegramBot):
 
     def __init__(self):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
+        self.pattern = r"^/(start|stop) (\S+)"
+        self.status_icon = {"running": "🟢", "exited": "🔴"}
+        self.service_data = self.get_service_data()
+
+    def get_service_data(self):
+        response = requests.get("http://nginx/docker_db/services")
+        if response.ok:
+            return {f'{item["name"]} {self.status_icon[item["status"][0]]}':
+                        {"id": item["containerId"], "status": item["status"][0]} for item in response.json()[0]}
+
+        else:
+            return {}
+
+    def service_action(self, service, action):
+        if service not in self.service_data:
+            return f"service {service} not found"
+        else:
+            match action:
+                case "status":
+                    service_status = self.service_data[service]['status']
+                    return f"{service} status: {service_status} {self.status_icon[service_status]}"
+                case "start" | "stop":
+                    service_status = self.service_data[service]['status']
+                    check = {"start": "running", "stop": "exited"}
+                    if check[action] == service_status:
+                        return f"service {service} is already f{check[action]}"
+                    else:
+                        return requests.post(f"http://nginx/docker_db/{action}/{self.service_data['service']}")
+
+    def send_menu(self, title, menu_items):
+        inline_keyboard = [[{"text": item, "callback_data": item}] for item in menu_items]
+        self.send(message=title, inline_keyboard=inline_keyboard)
 
     def process_messages(self, message):
-        self.send(f"service: {message['data']}")
+
+        match text := message['data']:
+            case "/menu":
+                self.send_menu("MENU", ("start", "stop", "status"))
+            case "/refresh":
+                self.service_data = self.get_service_data()
+            case cmd if re.match(r"^/(menu\s)?(start|stop|status)$", cmd):
+                title = re.sub(r"^(/menu\s?|\s?/)", "", cmd).upper()
+                self.send_menu(title, sorted(self.service_data))
+            case cmd if re.match(r"^/status\b", cmd):
+                self.send(self.service_action(service=cmd.split()[1], action="status"))
+            case cmd if re.match(r"^/start\b", cmd):
+                self.send(self.service_action(service=cmd.split()[1], action="start"))
+            case _:
+                self.send(f"unknown service cmd: {message['data']}")
 
 
 class TelegramBotStocks(TelegramBot):

@@ -30,7 +30,7 @@ def set_webhook():
     webhook_url = f"{TELEGRAM_API_URL}/setWebhook"
     payload = {
         "url": f"{NGROK_URL}/webhook",
-        "allowed_updates": ["message", "channel_post"]
+        "allowed_updates": ["message", "channel_post", "callback_query"]
     }
     response = requests.post(webhook_url, json=payload).json()
     logger.info(f"Webhook Setup Response: {response}")
