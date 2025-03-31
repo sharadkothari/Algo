@@ -69,12 +69,13 @@ class TelegramBotService(TelegramBot):
         self.pattern = r"^/(start|stop) (\S+)"
         self.status_icon = {"running": "🟢", "exited": "🔴"}
         self.service_data = self.get_service_data()
+        self.send("starting...")
 
     def get_service_data(self):
         response = requests.get("http://nginx/docker_db/services")
         if response.ok:
-            return {f'{item["name"]} {self.status_icon[item["status"][0]]}':
-                        {"id": item["containerId"], "status": item["status"][0]} for item in response.json()[0]}
+            return {item["name"]: {"id": item["containerId"], "status": item["status"][0]} for item in
+                    response.json()[0]}
 
         else:
             return {}
@@ -93,10 +94,12 @@ class TelegramBotService(TelegramBot):
                     if check[action] == service_status:
                         return f"service {service} is already f{check[action]}"
                     else:
-                        return requests.post(f"http://nginx/docker_db/{action}/{self.service_data['service']}")
+                        return requests.get(f"http://nginx/docker_db/{action}/{self.service_data[service]['id']}").text
+
 
     def send_menu(self, title, menu_items):
-        inline_keyboard = [[{"text": item, "callback_data": item}] for item in menu_items]
+        inline_keyboard = [menu_items[i:i + 2] for i in range(0, len(menu_items), 2)]
+        inline_keyboard = [[{"text": item, "callback_data": item} for item in row] for row in inline_keyboard]
         self.send(message=title, inline_keyboard=inline_keyboard)
 
     def process_messages(self, message):
@@ -104,15 +107,24 @@ class TelegramBotService(TelegramBot):
         match text := message['data']:
             case "/menu":
                 self.send_menu("MENU", ("start", "stop", "status"))
+
             case "/refresh":
                 self.service_data = self.get_service_data()
+
             case cmd if re.match(r"^/(menu\s)?(start|stop|status)$", cmd):
                 title = re.sub(r"^(/menu\s?|\s?/)", "", cmd).upper()
-                self.send_menu(title, sorted(self.service_data))
+                self.service_data = self.get_service_data()
+                service_list = [f"{key} {self.status_icon[value['status']]}" for key, value in
+                                self.service_data.items()]
+                self.send_menu(title, sorted(service_list))
+
             case cmd if re.match(r"^/status\b", cmd):
                 self.send(self.service_action(service=cmd.split()[1], action="status"))
-            case cmd if re.match(r"^/start\b", cmd):
-                self.send(self.service_action(service=cmd.split()[1], action="start"))
+
+            case cmd if (m := re.match(r"^/(start|stop)\s+(\S+)", cmd)):
+                action, service = m.groups()
+                self.send(self.service_action(service=cmd.split()[1], action=action))
+
             case _:
                 self.send(f"unknown service cmd: {message['data']}")
 

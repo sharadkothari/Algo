@@ -29,13 +29,13 @@ def get_services():
     return jsonify(dh.get_services())
 
 
-@app.route('/start/<container_id>', methods=['POST'])
+@app.route('/start/<container_id>', methods=['GET', 'POST'])
 def start_container(container_id):
     result = dh.start_container(container_id)
     return jsonify(result[0]), result[1]
 
 
-@app.route('/stop/<container_id>', methods=['POST'])
+@app.route('/stop/<container_id>', methods=['GET', 'POST'])
 def stop_container(container_id):
     result = dh.stop_container(container_id)
     return jsonify(result[0]), result[1]

@@ -20,10 +20,7 @@ class TelegramHandlerManager:
         payload = {"chat_id": chat_id, "text": message, **kwargs}
         if inline_keyboard:
             payload["reply_markup"] = json.dumps({"inline_keyboard": inline_keyboard, "resize_keyboard": True})
-
-        print("message", payload, flush=True)
         r = requests.post(f"{self.api_url}/sendMessage", json=payload)
-        print(r.json(), flush=True)
 
     def ack_callback(self, callback_id, text, **kwargs):
         payload = {"callback_query_id": callback_id, "text": text, "show_alert": False, **kwargs}
