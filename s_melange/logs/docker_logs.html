@@ -68,6 +68,26 @@
             border-radius: 5px;
             overflow-y: auto;
         }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button {
+            background-color: #444;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+
+        button:hover {
+            background-color: #666;
+        }
     </style>
 </head>
 <body>
@@ -82,26 +102,35 @@
     </div>
 
     <div id="content">
-        <h2 id="service-title">Select a Service</h2>
+        <div class="header">
+            <h2 id="service-title">Select a Service</h2>
+            <div>
+                <button onclick="refreshLogs()">Refresh</button>
+                <button id="toggle-refresh" onclick="toggleAutoRefresh()">Stop Auto Refresh</button>
+            </div>
+        </div>
         <div id="log-container">
             <pre id="log-content">Logs will appear here...</pre>
         </div>
     </div>
 
     <script>
+        let autoRefreshInterval;
+        let lastService = localStorage.getItem("lastSelectedService");
+
         function scrollToBottom() {
             const logContent = document.getElementById("log-content");
             logContent.scrollTop = logContent.scrollHeight;
-    }
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
-            const lastService = localStorage.getItem("lastSelectedService");
             if (lastService) {
                 fetchLogs(lastService);
             }
+            startAutoRefresh();
         });
 
         function fetchLogs(service) {
-            // Store the selected service in localStorage
             localStorage.setItem("lastSelectedService", service);
             document.getElementById("service-title").textContent = "Logs for: " + service;
             document.getElementById("log-content").textContent = "Loading logs...";
@@ -116,9 +145,37 @@
                         document.getElementById("log-content").textContent = "Error: " + data.error;
                     }
                 })
-                .catch(error => {
+                .catch(() => {
                     document.getElementById("log-content").textContent = "Error fetching logs.";
                 });
+        }
+
+        function refreshLogs() {
+            const currentService = document.getElementById("service-title").textContent.replace("Logs for: ", "").trim();
+            if (currentService && currentService !== "Select a Service") {
+                fetchLogs(currentService);
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh(); // Ensure no duplicate intervals
+            autoRefreshInterval = setInterval(refreshLogs, 60000);
+        }
+
+        function stopAutoRefresh() {
+            clearInterval(autoRefreshInterval);
+        }
+
+        function toggleAutoRefresh() {
+            const button = document.getElementById("toggle-refresh");
+            if (autoRefreshInterval) {
+                stopAutoRefresh();
+                autoRefreshInterval = null;
+                button.textContent = "Start Auto Refresh";
+            } else {
+                startAutoRefresh();
+                button.textContent = "Stop Auto Refresh";
+            }
         }
     </script>
 
