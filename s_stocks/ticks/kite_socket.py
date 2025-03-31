@@ -6,12 +6,12 @@ from kiteconnect import KiteTicker, KiteConnect
 from common.config import data_dir, base_dir_prv, redis_host, redis_port, redis_db
 import json
 import datetime
-import queue
 from common.my_logger import logger
 from common.trading_hours import TradingHours
 from common.telegram_bot import TelegramBotStocks
 import os
 import signal
+from collections import deque
 
 with open(data_dir / f'brokers.json', 'r') as f:
     broker_data = json.loads(f.read())
@@ -34,9 +34,9 @@ class KiteSocket:
         self.kite = KiteConnect(self.api_key)
         self.thread_running = True  # Control the monitoring thread
         self.ticks = {}
-
-        self.tick_queue = queue.Queue()
+        self.tick_dq = deque()
         self.is_running = False
+        self.date_str = None
         self.start()
 
     def start(self):
@@ -62,7 +62,7 @@ class KiteSocket:
         def on_ticks(ws, ticks):
             _ = ws
             cur_tick = {self.inst_symbol_dict.get(tick["instrument_token"], "NA"): tick for tick in ticks}
-            self.tick_queue.put(cur_tick)
+            self.tick_dq.append(cur_tick)
             self.ticks |= cur_tick
 
         def on_close(ws, code, reason):
@@ -101,7 +101,7 @@ class KiteSocket:
         def suspend_ticker():
             if not self.trading_hour.is_open():
                 seconds_until_open = self.trading_hour.time_until_next_open().total_seconds()
-                next_open_time = now + datetime.timedelta(seconds=seconds_until_open)
+                next_open_time = datetime.datetime.now() + datetime.timedelta(seconds=seconds_until_open)
                 self.stop()
                 logger.info(
                     f'suspending ticker till {next_open_time:%d-%b-%Y %H:%M} | {seconds_until_open:.0f} seconds')
@@ -114,27 +114,25 @@ class KiteSocket:
                     logger.info(f"starting ticker")
                     self.start_kiteticker(access_token)
                     self.is_running = True
+                    self.date_str = datetime.datetime.now().strftime('%Y-%m-%d')
 
         def update_redis():
-            if cur_queue:
-                try:
-                    with self.redis.pipeline() as pipe:
-                        hash_key = f'tick:{date_str}'
-                        list_key = 'ticks'
-                        for tick in cur_queue:
-                            pipe.lpush(list_key, json.dumps(tick, default=lambda x: x.isoformat()))
-                            for key, value in tick.items():
-                                pipe.hset(hash_key, key, json.dumps(value, default=lambda x: x.isoformat()))
-                        pipe.expire(hash_key, 24 * 60 * 60)
-                        pipe.expire(list_key, 24 * 60 * 60)
-                        pipe.execute()
-                except redis.RedisError as e:
-                    logger.error(f"Redis pipeline execution failed: {e}")
+            try:
+                with self.redis.pipeline() as pipe:
+                    hash_key = f'tick:{self.date_str}'
+                    list_key = 'ticks'
+                    while self.tick_dq:
+                        tick = self.tick_dq.popleft()
+                        pipe.lpush(list_key, json.dumps(tick, default=lambda x: x.isoformat()))
+                        for key, value in tick.items():
+                            pipe.hset(hash_key, key, json.dumps(value, default=lambda x: x.isoformat()))
+                    pipe.expire(hash_key, 24 * 60 * 60)
+                    pipe.expire(list_key, 24 * 60 * 60)
+                    pipe.execute()
+            except redis.RedisError as e:
+                logger.error(f"Redis pipeline execution failed: {e}")
 
         while True:
-            now = datetime.datetime.now()
-            date_str = datetime.date.today().strftime('%Y%m%d')
-            cur_queue = [self.tick_queue.get() for _ in range(len(self.tick_queue.queue))]
             update_redis()
             suspend_ticker()
             start_ticker()
