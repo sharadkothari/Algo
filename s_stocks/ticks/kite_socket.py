@@ -32,7 +32,6 @@ class KiteSocket:
         # self.rp = self.redis_client.pipeline()
         self.kws = None  # WebSocket instance
         self.kite = KiteConnect(self.api_key)
-        self.thread_running = True  # Control the monitoring thread
         self.ticks = {}
         self.tick_dq = deque()
         self.is_running = False
@@ -94,7 +93,6 @@ class KiteSocket:
         # Start WebSocket in a separate thread
         # threading.Thread(target=self.kws.connect, kwargs={"threaded": True}, daemon=True).start()
         self.kws.connect(threaded=True)
-        self.thread_running = True  # Control the monitoring thread
 
     def monitor(self):
 
