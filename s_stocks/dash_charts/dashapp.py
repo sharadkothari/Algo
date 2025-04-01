@@ -45,7 +45,7 @@ class DashApp:
 
                 com.btn_quote,
             ]),
-            self.lh.context_section([dcc.Graph(id='graph',style={'height': '92vh'})]),
+            self.lh.context_section([dcc.Graph(id='graph',style={'height': '92vh', 'width': '100vw'})]),
             com.legs_modal,
             com.intervals,
         ])

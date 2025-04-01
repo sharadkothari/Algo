@@ -15,7 +15,7 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
                   Input('interval', 'n_intervals'))
     def update_graph(n):
         auto_update = data.live and data.th.is_open()
-        return chart.plot(), not auto_update
+        return chart.plot() , not auto_update
 
     @app.callback(
         Output('btn_uix', 'children'),
