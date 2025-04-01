@@ -37,7 +37,6 @@ class KiteSocket:
 
         self.tick_queue = queue.Queue()
         self.is_running = False
-        self.connected = False
         self.start()
 
     def start(self):
@@ -59,7 +58,6 @@ class KiteSocket:
             tokens = list(self.inst_symbol_dict)
             ws.subscribe(tokens)
             ws.set_mode(ws.MODE_FULL, tokens)
-            self.connected = True
 
         def on_ticks(ws, ticks):
             _ = ws
@@ -113,12 +111,8 @@ class KiteSocket:
         def start_ticker():
             if not self.is_running:
                 if access_token := self.get_access_token():
-                    attempt_no = 1
-                    while not self.connected:
-                        logger.info(f"starting ticker. attempt#{attempt_no}")
-                        self.start_kiteticker(access_token)
-                        time.sleep(5)
-                        attempt_no += 1
+                    logger.info(f"starting ticker")
+                    self.start_kiteticker(access_token)
                     self.is_running = True
 
         def update_redis():
@@ -157,7 +151,6 @@ class KiteSocket:
         if self.kws:
             self.kws.close()
         self.is_running = False
-        self.connected = False
         self.inst_symbol_dict = None
 
     def get_inst(self):
