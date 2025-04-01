@@ -36,6 +36,9 @@ class Spread:
             self.quote: HistQuote = HistQuote()
             self.quote.set_date(date=self.date)
 
+    def get_date(self):
+        return dt.date.today() if self.live else self.date
+
     def change_date(self, date):
         if not self.live:
             self.date = date
@@ -47,7 +50,13 @@ class Spread:
         df = self.quote.quote(**kwargs)
         self.legs.append(QuoteLeg(**(kwargs | {"df": df})))
 
+    def update_df(self):
+        for leg in self.legs:
+            leg.df = self.quote.quote(uix=leg.uix, strike=leg.strike, opt_type=leg.opt_type)
+
     def compute_spread(self, by_option=False):
+        if self.live:
+            self.update_df()
         # Collect unique datetime values
         all_times = pd.concat([leg.df for leg in self.legs])["date"].unique()
         all_times = np.sort(pd.to_datetime(all_times))
@@ -57,7 +66,8 @@ class Spread:
         for leg in self.legs:
             df = leg.df.copy()
             df.loc[:, ['open', 'high', 'low', 'close']] *= leg.multiplier
-            df = df.set_index("date").reindex(all_times).ffill().infer_objects(copy=False)  # Align timestamps
+            df = df.drop_duplicates(subset="date").set_index("date").reindex(all_times).ffill().infer_objects(
+                copy=False)  # Align timestamps
 
             key = leg.opt_type.lower() if by_option else 'all'
             spread_df[key] = spread_df[key].add(df, fill_value=0) if not spread_df[key].empty else df
@@ -89,7 +99,7 @@ class Spread:
 
 
 if __name__ == '__main__':
-    s = Spread(live=True, date=dt.date(2025, 3, 26))
+    s = Spread(live=False, date=dt.date(2025, 3, 26))
     s.add_leg("NN", "d0", "CE", 1)
     s.add_leg("NN", "d0", "PE", 1)
     dfs = s.compute_spread()
