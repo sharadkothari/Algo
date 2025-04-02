@@ -112,7 +112,7 @@ class KiteSocket:
                     logger.info(f"starting ticker")
                     self.start_kiteticker(access_token)
                     self.is_running = True
-                    self.date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+                    self.date_str = datetime.datetime.now().strftime('%Y%m%d')
 
         def update_redis():
             try:
@@ -134,6 +134,7 @@ class KiteSocket:
             update_redis()
             suspend_ticker()
             start_ticker()
+            time.sleep(0.1)
 
     @staticmethod
     def restart_program():
