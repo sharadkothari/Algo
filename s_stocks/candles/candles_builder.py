@@ -12,7 +12,7 @@ class Candles:
     EXPIRY_TIME = 86400  # 1 day in seconds
 
     def __init__(self):
-        self.timeframe = 5  # seconds
+        self.timeframe = 3  # seconds
         self.timestamp_field = 'exchange_timestamp'
         self.in_progress_candles = {}  # Holds active candles
         self.completed_candles = {}  # Holds candles ready to upload
