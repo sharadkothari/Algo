@@ -24,38 +24,6 @@ def register_service(module_name, port):
     return f"Registered {module_name} at {port}"
 
 
-class DockerLog:
-    def __init__(self):
-        self.client = docker.from_env()
-        self.tail = 50
-
-    @staticmethod
-    def get_container_id():
-        try:
-            with open("/proc/self/cgroup", "r") as f:
-                for line in f:
-                    parts = line.strip().split("/")
-                    if len(parts) > 2 and parts[-1]:  # Last part contains the container ID
-                        return parts[-1]
-        except Exception as e:
-            print(f"Error retrieving container ID: {e}")
-        return None
-
-    def read_docker_log(self):
-        if container_id := self.get_container_id():
-            try:
-                client = docker.from_env()
-                container = client.containers.get(container_id)
-                logs = container.logs(tail=self.tail)
-                return logs.decode('utf-8')
-            except Exception as e:
-                print(f"Error: {e}")
-                return None
-
-# common/utils.py
-def greet(name):
-    return f"Hello, {name} from shared utils!"
-
 if __name__ == "__main__":
     ...
 
