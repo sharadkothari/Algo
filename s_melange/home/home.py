@@ -54,7 +54,6 @@ def health_check():
     pubsub.psubscribe("__keyspace@0__:service:*")
     try:
         for msg in pubsub.listen():
-            print(msg, flush=True)
             key = msg["channel"].split(":")[-1]  # Extract service key
             if msg["data"] == "hset":
                 status = redis_client.hget(f"service:{key}", "status")

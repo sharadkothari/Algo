@@ -12,6 +12,7 @@ import datetime as dt
 import signal
 from pathlib import Path
 from common.base_service import BaseService
+import re
 
 module_name = Path(__file__).stem
 
@@ -72,9 +73,15 @@ class KiteToken:
         # Step 3: Extract request_token from redirect
         if totp_response.json()["status"] == "success":
             redirect_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={self.api_key}"
-            response = session.get(redirect_url, headers={}, allow_redirects=True)
-            if "request_token=" in response.url:
-                return response.url.split("request_token=")[1].split("&")[0]
+            try:
+                response = session.get(redirect_url, headers={}, allow_redirects=True)
+                if "request_token=" in response.url:
+                    return response.url.split("request_token=")[1].split("&")[0]
+            except requests.exceptions.ConnectionError as e:
+                error_str = str(e)
+                match = re.search(r'request_token=([a-zA-Z0-9]+)', error_str)
+                if match:
+                    return match.group(1)
 
     def get_access_token(self):
         kite = KiteConnect(api_key=self.api_key)
@@ -109,9 +116,10 @@ class TokenScheduler(BaseService):
         self.retry_list = []
         self.kt = KiteToken()
         self.scheduler = BlockingScheduler()
-        self.start_key = [22, 3, 4]  # start hour, start_minute, end_minute
+        self.start_key = [8, 0, 59]  # start hour, start_minute, end_minute
         self.scheduler.add_job(self.daily_update, 'cron', hour=self.start_key[0],
                                minute=self.start_key[1], id='daily_scheduler')
+        logger.info(f"Daily token scheduler started at {self.start_key[0]}:{self.start_key[1]}")
         signal.signal(signal.SIGINT, self.graceful_exit)  # Ctrl+C
         signal.signal(signal.SIGTERM, self.graceful_exit)  # Termination
 
@@ -154,3 +162,6 @@ class TokenScheduler(BaseService):
 if __name__ == "__main__":
     ts = TokenScheduler()
     ts.scheduler.start()
+    # kt = KiteToken()
+    # kt.set_client_id("RS5756")
+    # kt.get_access_token()

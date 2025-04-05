@@ -12,7 +12,7 @@ import datetime
 app = Flask(__name__, template_folder=".", static_folder=".")
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 module_name = Path(__file__).stem
-port = 6007
+port = 5007
 
 with open(data_dir / 'telegram.json', 'r') as f:
     telegram_data = json.loads(f.read())
