@@ -39,3 +39,4 @@ networks:
 include:
   - ./s_melange/melange-docker-compose.yml
   - ./s_stocks/stocks-docker-compose.yml
+  - ./s_brokers/brokers-docker-compose.yml

@@ -1,0 +1,13 @@
+
+services:
+
+  brokers_api_tokens:
+    build: ./api_tokens
+    container_name: brokers_api_tokens
+    restart: always
+    networks: [default]
+    volumes:
+      - ./api_tokens:/app
+      - ../common:/app/common
+    depends_on:
+      - monorepo_base

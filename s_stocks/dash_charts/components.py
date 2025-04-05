@@ -71,7 +71,6 @@ class Components:
             display_format='D-MMM-YY',
             first_day_of_week=1,
             min_date_allowed=dt.date(2023, 9, 1).isoformat(),
-            max_date_allowed=dt.date.today().isoformat(),
             id=_id,
             disabled_days=self.data.expiry.holidays,
         )
