@@ -29,8 +29,6 @@ services:
       - melange_alerts
       - melange_telegram
       - melange_docker_db
-      - stocks_ticks
-      - stocks_candles
       - stocks_ticking
       - stocks_dash_charts
 

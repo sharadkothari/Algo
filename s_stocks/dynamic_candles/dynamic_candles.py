@@ -7,11 +7,15 @@ from common.trading_hours import TradingHours
 import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 import signal
+from pathlib import Path
+from common.base_service import BaseService
 
+module_name = Path(__file__).stem
 
-class DynamicCandlesBuilder:
+class DynamicCandlesBuilder(BaseService):
 
     def __init__(self):
+        super().__init__(module_name)
         self.redis = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
         self.pipe = self.redis.pipeline()
         self.trading_hours = TradingHours(end_buffer=30)

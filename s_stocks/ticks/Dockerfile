@@ -1,3 +1,3 @@
 FROM monorepo_base
 
-CMD ["gunicorn", "-c", "gunicorn_config.py", "ticks:app"]
+CMD ["python", "ticks.py"]
