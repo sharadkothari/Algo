@@ -10,6 +10,10 @@ from common.config import data_dir, get_redis_client
 from apscheduler.schedulers.blocking import BlockingScheduler
 import datetime as dt
 import signal
+from pathlib import Path
+from common.base_service import BaseService
+
+module_name = Path(__file__).stem
 
 with open(data_dir / f'brokers.json', 'r') as f:
     broker_data = json.loads(f.read())
@@ -97,14 +101,15 @@ class KiteToken:
             return False
 
 
-class TokenScheduler:
+class TokenScheduler(BaseService):
 
     def __init__(self):
+        super().__init__(module_name)
         self.client_ids = ["RS5756", "YM3006", "MIM066"]
         self.retry_list = []
         self.kt = KiteToken()
         self.scheduler = BlockingScheduler()
-        self.start_key = [20, 55, 56]  # start hour, start_minute, end_minute
+        self.start_key = [22, 0, 2]  # start hour, start_minute, end_minute
         self.scheduler.add_job(self.daily_update, 'cron', hour=self.start_key[0],
                                minute=self.start_key[1], id='daily_scheduler')
         signal.signal(signal.SIGINT, self.graceful_exit)  # Ctrl+C
