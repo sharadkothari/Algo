@@ -16,21 +16,6 @@ services:
     depends_on:
       - monorepo_base
 
-  melange_streams:
-    build: ./streams
-    container_name: melange_streams
-    restart: always
-    ports: ["5002:5002"]
-    networks: [default]
-    volumes:
-      - ./streams:/app
-      - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5002
-    depends_on:
-      - monorepo_base
-
   melange_health:
     build: ./health
     container_name: melange_health
@@ -43,21 +28,6 @@ services:
       - ../gunicorn_config.py:/app/gunicorn_config.py
     environment:
       - GUNICORN_BIND=0.0.0.0:5003
-    depends_on:
-      - monorepo_base
-
-  melange_dbone:
-    build: ./dbone
-    container_name: melange_dbone
-    restart: always
-    ports: ["5004:5004"]
-    networks: [default]
-    volumes:
-      - ./dbone:/app
-      - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5004
     depends_on:
       - monorepo_base
 

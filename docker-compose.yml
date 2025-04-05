@@ -20,11 +20,11 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/common_proxy_headers.conf:/etc/nginx/common_proxy_headers.conf
-      - ./nginx/streams:/usr/share/nginx/html/streams
+      - ./nginx/static:/usr/share/nginx/html
+
     depends_on:
       - melange_home
       - melange_health
-      - melange_dbone
       - melange_logs
       - melange_alerts
       - melange_telegram
