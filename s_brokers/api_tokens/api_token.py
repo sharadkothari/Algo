@@ -109,7 +109,7 @@ class TokenScheduler(BaseService):
         self.retry_list = []
         self.kt = KiteToken()
         self.scheduler = BlockingScheduler()
-        self.start_key = [22, 0, 2]  # start hour, start_minute, end_minute
+        self.start_key = [22, 3, 4]  # start hour, start_minute, end_minute
         self.scheduler.add_job(self.daily_update, 'cron', hour=self.start_key[0],
                                minute=self.start_key[1], id='daily_scheduler')
         signal.signal(signal.SIGINT, self.graceful_exit)  # Ctrl+C
