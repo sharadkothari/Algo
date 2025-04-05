@@ -1,4 +1,4 @@
-from common.config import redis_host, redis_port, redis_db
+from common.config import get_redis_client
 import redis
 import threading
 from common.my_logger import logger
@@ -10,14 +10,14 @@ import json
 class TelegramBot:
     _instances = {}  # Store single instances per chat_id
 
-    def __new__(cls, chat_id, consumer_name):
+    def __new__(cls, chat_id, consumer_name, send_only=False):
         """Ensure only one instance per chat_id exists."""
         if chat_id not in cls._instances:
             instance = super().__new__(cls)
             cls._instances[chat_id] = instance
         return cls._instances[chat_id]
 
-    def __init__(self, chat_id, consumer_name):
+    def __init__(self, chat_id, consumer_name, send_only=False):
         """Prevent re-initialization if instance already exists."""
         if hasattr(self, "initialized"):
             return  # Avoid re-initialization
@@ -25,13 +25,13 @@ class TelegramBot:
         self.chat_id = chat_id
         self.consumer_name = consumer_name
         self.outgoing_stream = "telegram_outgoing"
-        self.redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
-        pubsub = self.redis_client.pubsub()
-        pubsub.unsubscribe(f"{self.chat_id}")
-        pubsub.subscribe(**{f"{self.chat_id}": self.process_messages})
-        pubsub.run_in_thread(sleep_time=1)
-
-        self.initialized = True
+        self.redis_client = get_redis_client()
+        if not send_only:
+            pubsub = self.redis_client.pubsub()
+            pubsub.unsubscribe(f"{self.chat_id}")
+            pubsub.subscribe(**{f"{self.chat_id}": self.process_messages})
+            pubsub.run_in_thread(sleep_time=1)
+            self.initialized = True
 
     def process_messages(self, message):
         ...
@@ -46,11 +46,11 @@ class TelegramBotMain(TelegramBot):
     consumer_name = "main"
     chat_id = 387589523
 
-    def __new__(cls):
-        return super().__new__(cls, cls.chat_id, cls.consumer_name)
+    def __new__(cls, send_only=False):
+        return super().__new__(cls, cls.chat_id, cls.consumer_name, send_only=send_only)
 
-    def __init__(self):
-        super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
+    def __init__(self, send_only=False):
+        super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name, send_only=send_only)
 
     def process_messages(self, message):
         def get_service_data():
@@ -61,11 +61,11 @@ class TelegramBotService(TelegramBot):
     consumer_name = "service"
     chat_id = -1002340369818
 
-    def __new__(cls):
-        return super().__new__(cls, cls.chat_id, cls.consumer_name)
+    def __new__(cls, send_only=False):
+        return super().__new__(cls, cls.chat_id, cls.consumer_name, send_only=send_only)
 
-    def __init__(self):
-        super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
+    def __init__(self, send_only=False):
+        super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name, send_only=send_only)
         self.pattern = r"^/(start|stop) (\S+)"
         self.status_icon = {"running": "🟢", "exited": "🔴"}
         self.service_data = self.get_service_data()
@@ -95,7 +95,6 @@ class TelegramBotService(TelegramBot):
                         return f"service {service} is already f{check[action]}"
                     else:
                         return requests.get(f"http://nginx/docker_db/{action}/{self.service_data[service]['id']}").text
-
 
     def send_menu(self, title, menu_items):
         inline_keyboard = [menu_items[i:i + 2] for i in range(0, len(menu_items), 2)]
@@ -133,11 +132,11 @@ class TelegramBotStocks(TelegramBot):
     consumer_name = "stocks"
     chat_id = -4626518827
 
-    def __new__(cls):
-        return super().__new__(cls, cls.chat_id, cls.consumer_name)
+    def __new__(cls, send_only=False):
+        return super().__new__(cls, cls.chat_id, cls.consumer_name, send_only=send_only)
 
-    def __init__(self):
-        super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name)
+    def __init__(self, send_only=False):
+        super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name, send_only=send_only)
 
     def process_messages(self, message):
         match message["data"].lower():
@@ -149,5 +148,5 @@ class TelegramBotStocks(TelegramBot):
 
 
 if __name__ == "__main__":
-    tbot = TelegramBotService()
+    tbot = TelegramBotStocks(send_only=True)
     tbot.send('123')

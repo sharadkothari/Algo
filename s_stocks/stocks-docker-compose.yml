@@ -5,14 +5,10 @@ services:
     build: ./ticks
     container_name: stocks_ticks
     restart: always
-    ports: ["5021:5021"]
     networks: [default]
     volumes:
       - ./ticks:/app
       - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5021
     depends_on:
       - monorepo_base
   
@@ -20,14 +16,10 @@ services:
     build: ./candles
     container_name: stocks_candles
     restart: always
-    ports: ["5022:5022"]
     networks: [default]
     volumes:
       - ./candles:/app
       - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5022
     depends_on:
       - monorepo_base
 
