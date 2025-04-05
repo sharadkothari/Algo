@@ -35,14 +35,10 @@ services:
     build: ./dynamic_candles
     container_name: stocks_dynamic_candles
     restart: always
-    ports: ["5023:5023"]
     networks: [default]
     volumes:
       - ./dynamic_candles:/app
       - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5023
     depends_on:
       - monorepo_base
 
