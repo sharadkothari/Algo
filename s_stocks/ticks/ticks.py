@@ -38,7 +38,10 @@ class KiteSocket(BaseService):
         self.trading_hour = TradingHours(start_buffer=60)
         # self.rp = self.redis_client.pipeline()
         self.kws = None  # WebSocket instance
+        self.kws_id = None
+        self.kws_closed_event = threading.Event()
         self.kite = KiteConnect(self.api_key)
+        self.last_tick_time = time.time()
         self.ticks = {}
         self.tick_dq = deque()
         self.is_running = False
@@ -54,6 +57,7 @@ class KiteSocket(BaseService):
     def start_kiteticker(self, access_token):
         access_token = access_token if access_token else self.get_access_token()
         self.kws = KiteTicker(self.api_key, access_token)
+        self.kws_id = id(self.kws)
         self.kite.set_access_token(access_token)
 
         def on_connect(ws, response):
@@ -66,7 +70,10 @@ class KiteSocket(BaseService):
             ws.set_mode(ws.MODE_FULL, tokens)
 
         def on_ticks(ws, ticks):
+            if not self.is_running or self.inst_symbol_dict is None or id(ws) != self.kws_id:
+                return
             _ = ws
+            self.last_tick_time = time.time()
             cur_tick = {self.inst_symbol_dict.get(tick["instrument_token"], "NA"): tick for tick in ticks}
             self.tick_dq.append(cur_tick)
             # self.ticks |= cur_tick
@@ -75,11 +82,15 @@ class KiteSocket(BaseService):
             _ = code
             logger.info(f"WebSocket closed: {reason}")
             ws.stop_retry()
+            self.kws_closed_event.set()
+            self.is_running = False
 
         def on_error(ws, code, reason):
             _ = ws
             _ = code
             logger.error(f"WebSocket Error: {reason}")
+            self.kws_closed_event.set()
+            self.is_running = False
 
         def on_reconnect(ws, attempts):
             _ = ws
@@ -88,6 +99,8 @@ class KiteSocket(BaseService):
         def on_noreconnect(ws):
             _ = ws
             logger.info("Reconnect failed. Exiting.")
+            self.is_running = False
+            self.kws_closed_event.set()
 
         # Define WebSocket event handlers
         self.kws.on_connect = on_connect
@@ -137,10 +150,16 @@ class KiteSocket(BaseService):
             except redis.RedisError as e:
                 logger.error(f"Redis pipeline execution failed: {e}")
 
+        def heartbeat_check():
+            if self.is_running and time.time() - self.last_tick_time > 10:
+                logger.warning("No ticks for 10s — assuming dead WebSocket.")
+                self.stop()
+
         while True:
             suspend_ticker()
             update_redis()
             start_ticker()
+            heartbeat_check()
             time.sleep(0.1)
 
     @staticmethod
@@ -154,8 +173,10 @@ class KiteSocket(BaseService):
     def stop(self):
         if self.kws:
             self.kws.close()
+            self.kws_closed_event.wait(timeout=10)
         self.is_running = False
         self.inst_symbol_dict = None
+        self.kws = None
 
     def get_inst(self):
         try:
