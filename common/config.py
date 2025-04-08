@@ -22,8 +22,10 @@ else:
 
 
 def get_redis_client():
-    return redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
+    redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
+    redis_client.config_set('notify-keyspace-events', 'Khg')
+    return redis_client
 
 
 if __name__ == "__main__":
-    print(parquet_dir)
+    _redis_client = get_redis_client()
