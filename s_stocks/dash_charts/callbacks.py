@@ -141,3 +141,15 @@ def register_callbacks(app, data: DataLoader, chart: Chart):
         auto_update = data.live and data.th.is_open()
         update_chart()
         return values[0], values[1], not auto_update
+
+    @app.callback(
+        Output('btn_quote', 'children', allow_duplicate=True),
+        Output('btn_quote', 'color', allow_duplicate=True),
+        Output('interval', 'disabled', allow_duplicate=True),
+        Input('init_load_trigger', 'n_intervals'),
+        prevent_initial_call="initial_duplicate"
+    )
+    def init_quote_button(_):
+        values = [["H", "warning"], ["L", "success"]][data.live]
+        auto_update = data.live and data.th.is_open()
+        return values[0], values[1], not auto_update

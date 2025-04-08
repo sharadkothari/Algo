@@ -48,6 +48,7 @@ class DashApp:
             self.lh.context_section([dcc.Graph(id='graph',style={'height': '92vh', 'width': '100vw'})]),
             com.legs_modal,
             com.intervals,
+            com.init_load_trigger,
         ])
 
         register_callbacks(self.app, data=self.data, chart=self.chart)

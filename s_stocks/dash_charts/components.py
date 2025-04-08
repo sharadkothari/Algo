@@ -72,7 +72,7 @@ class Components:
             first_day_of_week=1,
             min_date_allowed=dt.date(2023, 9, 1).isoformat(),
             id=_id,
-            disabled_days=self.data.expiry.holidays,
+            disabled_days=self.data.expiry.holidays
         )
 
     @property
@@ -98,3 +98,9 @@ class Components:
     @property
     def div_space(self):
         return html.Div(style={"width": "30px"})
+
+    @property
+    def init_load_trigger(self):
+        return dcc.Interval(
+            id='init_load_trigger',
+            interval= 300, n_intervals=0, max_intervals=1)

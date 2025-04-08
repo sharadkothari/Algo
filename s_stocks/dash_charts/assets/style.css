@@ -10,6 +10,7 @@
     height: 35px !important;
 }
 
+
 .dash-debug-menu__outer {
     top: auto !important;
     right: 5px !important;
@@ -17,4 +18,18 @@
     bottom: 5px !important;
     height: 30px !important; /* Adjust height as needed */
 
+}
+
+.CalendarDay__today {
+    background-color: green !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 50% !important;
+    box-shadow: none !important;
+    font-weight: bold;
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+    margin: auto;
+    text-align: center;
 }
