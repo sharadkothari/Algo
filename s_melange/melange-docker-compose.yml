@@ -92,3 +92,14 @@ services:
       - GUNICORN_BIND=0.0.0.0:5008
     depends_on:
       - monorepo_base
+
+  melange_service_status:
+    build: ./service_status
+    container_name: melange_service_status
+    restart: always
+    networks: [default]
+    volumes:
+      - ./service_status:/app
+      - ../common:/app/common
+    depends_on:
+      - monorepo_base

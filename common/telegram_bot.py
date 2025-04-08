@@ -1,4 +1,4 @@
-from common.config import get_redis_client
+from common.config import get_redis_client, url_docker_db
 import redis
 import threading
 from common.my_logger import logger
@@ -72,7 +72,7 @@ class TelegramBotService(TelegramBot):
         self.send("starting...")
 
     def get_service_data(self):
-        response = requests.get("http://nginx/docker_db/services")
+        response = requests.get(f"{url_docker_db}/services")
         if response.ok:
             return {item["name"]: {"id": item["containerId"], "status": item["status"][0]} for item in
                     response.json()[0]}
@@ -94,7 +94,7 @@ class TelegramBotService(TelegramBot):
                     if check[action] == service_status:
                         return f"service {service} is already f{check[action]}"
                     else:
-                        return requests.get(f"http://nginx/docker_db/{action}/{self.service_data[service]['id']}").text
+                        return requests.get(f"{url_docker_db}/{action}/{self.service_data[service]['id']}").text
 
     def send_menu(self, title, menu_items):
         inline_keyboard = [menu_items[i:i + 2] for i in range(0, len(menu_items), 2)]

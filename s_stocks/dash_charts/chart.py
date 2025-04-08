@@ -53,12 +53,16 @@ class Chart:
         )
 
     def update_layout(self, fig):
+        title = f'{self.data_loader.expiry.underlying()} | {self.data_loader.expiry.dte(self.spread.get_date())}'
+        if self.data_loader.live:
+            latest_tick_time = pd.to_datetime(fig.data[0].x[-1]).time().strftime('%H:%M:%S')
+            title += f" | {latest_tick_time}"
         fig.update_layout(
-            title=f'{self.data_loader.expiry.underlying()} | {self.data_loader.expiry.dte(self.spread.get_date())}',
+            title=title,
             showlegend=False,
             xaxis_rangeslider_visible=False,
             margin=dict(l=50, r=0, t=10, b=0),
-            title_x=0.04,
+            title_x=0.03,
             title_y=0.97,
             hovermode='x unified',
             # xaxis=dict(tickformat='%H:%M\n%a %d-%b-%Y')
@@ -92,7 +96,7 @@ class Chart:
 
     def plot(self):
 
-        if self.data_loader.live and not self.data_loader.th.is_open():
+        if self.data_loader.live and dt.datetime.now().time() < self.data_loader.th.start:
             return self.empty_fig()
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -118,4 +122,4 @@ if __name__ == '__main__':
     d = DataLoader("dash2")
     c = Chart(d)
     _fig = c.plot()
-    _fig.show()
+    # _fig.show()
