@@ -139,9 +139,12 @@ class KiteSocket(BaseService):
                 with self.redis.pipeline() as pipe:
                     hash_key = f'tick:{self.date_str}'
                     list_key = 'ticks'
+                    tick_json = None
                     while self.tick_dq:
                         tick = self.tick_dq.popleft()
-                        pipe.lpush(list_key, json.dumps(tick, default=lambda x: x.isoformat()))
+                        tick_json = json.dumps(tick, default=lambda x: x.isoformat())
+                        pipe.publish("tick_channel", tick_json)
+                        pipe.lpush(list_key, tick_json)
                         for key, value in tick.items():
                             pipe.hset(hash_key, key, json.dumps(value, default=lambda x: x.isoformat()))
                     pipe.expire(hash_key, 24 * 60 * 60)
@@ -159,7 +162,7 @@ class KiteSocket(BaseService):
             suspend_ticker()
             update_redis()
             start_ticker()
-            heartbeat_check()
+            # heartbeat_check()
             time.sleep(0.1)
 
     @staticmethod
