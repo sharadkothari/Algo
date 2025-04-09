@@ -27,11 +27,21 @@ class TelegramBot:
         self.outgoing_stream = "telegram_outgoing"
         self.redis_client = get_redis_client()
         if not send_only:
-            pubsub = self.redis_client.pubsub()
-            pubsub.unsubscribe(f"{self.chat_id}")
-            pubsub.subscribe(**{f"{self.chat_id}": self.process_messages})
-            pubsub.run_in_thread(sleep_time=1)
+            self.pubsub = self.redis_client.pubsub()
+            self.pubsub.unsubscribe(f"{self.chat_id}")
+            self.pubsub.subscribe(f"{self.chat_id}")
             self.initialized = True
+            threading.Thread(target=self.listen_messages, daemon=True).start()
+
+    def listen_messages(self):
+        try:
+            for message in self.pubsub.listen():
+                if message["type"] == "message":  # Only process actual messages
+                    self.process_messages(message)
+        except Exception as e:
+            logger.info(f"Listener error for chat_id {self.chat_id}: {e}")
+        finally:
+            self.pubsub.close()
 
     def process_messages(self, message):
         ...

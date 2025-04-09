@@ -12,8 +12,6 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
 pubsub = redis_client.pubsub()
 bot_main = TelegramBotMain()
-tbot_service = TelegramBotService()
-
 
 @app.route("/check")
 def check():
@@ -49,27 +47,6 @@ def home():
 
     return render_template("home.html", services=services_data)
 
-
-def health_check():
-    pubsub.psubscribe("__keyspace@0__:service:*")
-    try:
-        for msg in pubsub.listen():
-            key = msg["channel"].split(":")[-1]  # Extract service key
-            if msg["data"] == "hset":
-                status = redis_client.hget(f"service:{key}", "status")
-                if status:
-                    status_emoji = "🟢" if status == "up" else "🔴"
-                    message = f"{status_emoji} {key} : {status.upper()}"
-                    logger.info(message)
-                    tbot_service.send(message)
-    except Exception as e:
-        print(f"Listener error: {e}")
-    finally:
-        pubsub.close()  # Close connection to Redis
-        print("Redis listener exited.")
-
-
-listener_thread = threading.Thread(target=health_check, daemon=True).start()
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5001)
