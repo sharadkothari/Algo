@@ -1,18 +1,31 @@
+# Core web frameworks
+fastapi~=0.110.0
+uvicorn[standard]
+gunicorn~=23.0.0
 Flask<3.1.0
-gunicorn
-redis~=5.2.1
-httpx~=0.28.1
-requests~=2.32.3
-docker~=7.1.0
-pandas~=2.2.3
-kiteconnect~=5.0.1
-APScheduler~=3.11.0
-ansi2html~=1.9.2
-dash_ag_grid~=31.3.1
+
+# Frontend/Dash
 dash~=3.0.1
+dash_ag_grid~=31.3.1
 dash-bootstrap-components~=2.0.0
+plotly~=6.0.1
+
+# Data & utils
+numpy~=2.2.4
+pandas~=2.2.3
 pyarrow~=19.0.1
 fastparquet~=2024.11.0
-numpy~=2.2.4
-plotly~=6.0.1
+
+# Scheduling, auth, etc.
+APScheduler~=3.11.0
 pyotp~=2.9.0
+ansi2html~=1.9.2
+
+# HTTP clients & APIs
+requests~=2.32.3
+httpx~=0.28.1
+kiteconnect~=5.0.1
+
+# Others
+docker~=7.1.0
+redis~=5.2.1
