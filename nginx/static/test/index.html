@@ -1,0 +1,32 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tick Viewer</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+    pre { font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <h2>Live Tick Feed (WebSocket)</h2>
+  <pre id="output">Connecting...</pre>
+
+    <script>
+      const socket = new WebSocket("ws://e7270:5009/ws/");
+      const output = document.getElementById("output");
+
+      socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        let str = "";
+        for (const [sym, tick] of Object.entries(data)) {
+          str += `${sym} → ₹${tick.last_price} | Vol: ${tick.volume} | 🕒 ${new Date(tick.exchange_timestamp * 1000).toLocaleTimeString()}\n`;
+        }
+        output.textContent = str;
+      };
+
+      socket.onopen = () => output.textContent = "Connected. Waiting for ticks...";
+      socket.onerror = (err) => console.error("WebSocket error:", err);
+    </script>
+    </body>
+</html>

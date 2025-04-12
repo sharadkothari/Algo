@@ -103,3 +103,16 @@ services:
       - ../common:/app/common
     depends_on:
       - monorepo_base
+
+  melange_api_gateway:
+    build: ./api_gateway
+    container_name: melange_api_gateway
+    restart: always
+    ports: [ "5009:5009" ]
+    networks: [ default ]
+    volumes:
+      - ./api_gateway:/app
+      - ../common:/app/common
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - monorepo_base

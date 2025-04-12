@@ -29,5 +29,10 @@ def get_redis_client():
     return redis_client
 
 
+async def get_redis_client_async():
+    redis_client = redis.asyncio.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
+    await redis_client.config_set('notify-keyspace-events', 'Khg')
+    return redis_client
+
 if __name__ == "__main__":
     _redis_client = get_redis_client()
