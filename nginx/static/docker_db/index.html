@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Service Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.1.0/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.1.0/styles/ag-theme-alpine.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.1.0/dist/ag-grid-community.min.js"></script>
+    <style>
+        /* Custom CSS for the loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #007bff;
+            width: 24px;
+            height: 24px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .ag-theme-alpine {
+            --ag-font-family: 'Inter', sans-serif;
+        }
+
+        .action-button {
+            height: 28px; /* slightly taller for balance */
+            display: flex;
+            align-items: center; /* vertical centering */
+            justify-content: center; /* optional: horizontal centering */
+            padding: 0 0; /* nice left/right padding */
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-inter">
+    <div class="p-4">
+        <h1 class="text-2xl font-semibold mb-4 text-gray-800">Docker Service Manager</h1>
+
+        <div id="loading" class="flex items-center justify-center h-64">
+            <div class="spinner"></div>
+            <span class="ml-2 text-gray-500">Loading services...</span>
+        </div>
+
+        <div id="error" class="flex items-center justify-center h-64 text-red-500 hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938-9.47a6 6 0 1113.876 0M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span id="error-message"></span>
+        </div>
+
+        <div id="services-grid-container" class="hidden">
+            <div id="services-grid" class="ag-theme-alpine" style="width: 100%; height: 90vh;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api/docker_db';
+
+        let gridOptions;
+        let gridInstance = null; // Store the grid instance
+
+        function getServiceStatusIcon(status) {
+            switch (status) {
+                case 'running':
+                    return `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>`;
+                case 'stopped':
+                    return `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l6-6m-6 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>`;
+                default:
+                    return `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m-4-5H6m4 0a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>`;
+            }
+        }
+
+        function getServiceStatusText(status) {
+            switch (status) {
+                case 'running':
+                    return `<span class="text-green-500 font-medium">Running</span>`;
+                case 'stopped':
+                    return `<span class="text-red-500 font-medium">Stopped</span>`;
+                default:
+                    return `<span class="text-gray-500 font-medium">Unknown</span>`;
+            }
+        }
+
+        function startContainer(containerId) {
+            fetch(`${API_BASE_URL}/start/${containerId}`, { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || 'Failed to start container'); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    fetchServices(); // Refresh the service list to update the status
+                })
+                .catch(error => {
+                    showError(`Failed to start container ${containerId}: ${error.message}`);
+                });
+        }
+
+        function stopContainer(containerId) {
+            fetch(`${API_BASE_URL}/stop/${containerId}`, { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                         return response.json().then(err => { throw new Error(err.error || 'Failed to stop container'); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    fetchServices();
+                })
+                .catch(error => {
+                    showError(`Failed to stop container ${containerId}: ${error.message}`);
+                });
+        }
+
+        function restartContainer(containerId) {
+            fetch(`${API_BASE_URL}/restart/${containerId}`, { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {throw new Error(err.error || 'Failed to restart container')});
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log(data);
+                    fetchServices();
+                })
+                .catch(error => {
+                    showError(`Failed to restart container ${containerId}: ${error.message}`);
+                });
+        }
+
+        function fetchServices() {
+            fetch(`${API_BASE_URL}/services`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    //console.log(data); // Add this line to see the structure of the data
+                    renderServicesGrid(data); //  <---  Adjusted data access
+                })
+                .catch(error => {
+                    showError(error.message);
+                });
+        }
+
+        function renderServicesGrid(services) {
+            const gridDiv = document.getElementById('services-grid');
+
+            const columnDefs = [
+                { headerName: 'Service Name', field: 'name', sortable: true, filter: true },
+                { headerName: 'Container ID', field: 'containerId', sortable: true, filter: true },
+                { headerName: 'Port', field: 'port', sortable: true, filter: true },
+                {
+                    headerName: 'Status',
+                    field: 'status',
+                    sortable: true,
+                    filter: true,
+                    cellRenderer: function(params) {
+                        const status = Array.isArray(params.value) ? params.value[0] : params.value;
+                        return `<div class="flex items-center">${getServiceStatusIcon(status)} ${getServiceStatusText(status)}</div>`;
+                    }
+                },
+                {
+                    headerName: 'Actions',
+                    field: 'containerId',
+                    cellRenderer: function(params) {
+                        const containerId = params.value;
+                        const rowData = params.data;
+                        const status = Array.isArray(rowData.status) ? rowData.status[0] : rowData.status;
+                        const actionText = status === 'running' ? 'Stop' : 'Start';
+                        const buttonClass = status === 'running' ? 'bg-red-500 hover:bg-red-700 text-white' : 'bg-green-500 hover:bg-green-700 text-white';
+
+                        return `<button class="${buttonClass} action-button font-bold py-2 px-4 rounded" onclick="${status === 'running' ? 'stopContainer' : 'startContainer'}('${containerId}')">${actionText}</button>`;
+                    }
+                }
+            ];
+
+            // Only create the grid once if it doesn't exist
+            if (!gridInstance) {
+                gridInstance = new agGrid.Grid(gridDiv, {
+                    columnDefs: columnDefs,
+                    rowData: services,
+                    defaultColDef: {
+                        sortable: true,
+                        filter: true,
+                        resizable: true
+                    },
+                    domLayout: 'autoHeight',
+                    onGridReady: function() {
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('services-grid-container').classList.remove('hidden');
+                    }
+                });
+            } else {
+                // Otherwise, update the existing grid
+                gridInstance.gridOptions.api.setRowData(services);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchServices);
+    </script>
+</body>
+</html>

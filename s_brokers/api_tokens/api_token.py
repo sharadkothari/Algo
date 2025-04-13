@@ -163,5 +163,5 @@ if __name__ == "__main__":
     ts = TokenScheduler()
     ts.scheduler.start()
     # kt = KiteToken()
-    # kt.set_client_id("RS5756")
+    # kt.set_client_id("MIM066")
     # kt.get_access_token()

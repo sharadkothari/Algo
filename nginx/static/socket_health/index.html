@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NIFTY 50 Health Monitor</title>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #eee; padding: 2rem; }
+    .status { font-size: 1.5rem; margin-bottom: 1rem; }
+    .healthy { color: limegreen; }
+    .delayed { color: orange; }
+    .stale, .disconnected { color: red; }
+    .card {
+      background: #222;
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
+      box-shadow: 0 0 10px #000;
+    }
+    .label { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🩺 NIFTY 50 WebSocket Health Monitor</h1>
+
+  <div class="card">
+    <div class="status" id="status">Connecting...</div>
+    <div><span class="label">Last Price:</span> ₹<span id="price">--</span></div>
+    <div><span class="label">Last Timestamp:</span> <span id="timestamp">--</span></div>
+    <div><span class="label">Delay:</span> <span id="delay">--</span> seconds</div>
+  </div>
+
+  <script>
+    let socket;
+    let lastExchangeTimestamp = null;
+    let reconnectInterval = 5000;
+
+    const statusEl = document.getElementById("status");
+    const priceEl = document.getElementById("price");
+    const timeEl = document.getElementById("timestamp");
+    const delayEl = document.getElementById("delay");
+
+    function updateHealthStatus(delay) {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        statusEl.textContent = "🔴 Disconnected";
+        statusEl.className = "status disconnected";
+        return;
+      }
+
+      if (delay < 2) {
+        statusEl.textContent = "🟢 Healthy";
+        statusEl.className = "status healthy";
+      } else if (delay < 5) {
+        statusEl.textContent = "⚠️ Delayed";
+        statusEl.className = "status delayed";
+      } else {
+        statusEl.textContent = "🔴 Stale";
+        statusEl.className = "status stale";
+      }
+    }
+
+    // Recalculate delay every second
+    setInterval(() => {
+      if (lastExchangeTimestamp) {
+        const now = Date.now() / 1000;
+        const delay = (now - lastExchangeTimestamp).toFixed(2);
+        delayEl.textContent = delay;
+        updateHealthStatus(parseFloat(delay));
+      } else {
+        delayEl.textContent = "--";
+        updateHealthStatus(Infinity);
+      }
+    }, 1000);
+
+    function connectSocket() {
+      socket = new WebSocket("ws://e7270:5009/ws/");
+
+      socket.onopen = () => {
+        console.log("✅ Connected to WebSocket");
+        statusEl.textContent = "🟢 Connected";
+        statusEl.className = "status healthy";
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const nifty = data["NIFTY 50"];
+          if (!nifty) return;
+
+          lastExchangeTimestamp = nifty.exchange_timestamp;
+          priceEl.textContent = nifty.last_price.toFixed(2);
+          timeEl.textContent = new Date(lastExchangeTimestamp * 1000).toLocaleTimeString();
+        } catch (err) {
+          console.error("Invalid message:", err);
+        }
+      };
+
+      socket.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        socket.close(); // triggers onclose
+      };
+
+      socket.onclose = () => {
+        console.warn("❌ WebSocket closed. Reconnecting in 5s...");
+        statusEl.textContent = "🔴 Disconnected";
+        statusEl.className = "status disconnected";
+        setTimeout(connectSocket, reconnectInterval);
+      };
+    }
+
+    // Start the socket
+    connectSocket();
+  </script>
+</body>
+</html>

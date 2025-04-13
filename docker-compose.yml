@@ -23,15 +23,9 @@ services:
       - ./nginx/static:/usr/share/nginx/html
 
     depends_on:
-      - melange_home
-      - melange_health
-      - melange_logs
       - melange_alerts
       - melange_telegram
-      - melange_docker_db
       - melange_api_gateway
-      - stocks_ticking
-      - stocks_dash_charts
 
 networks:
   default:

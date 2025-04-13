@@ -5,12 +5,13 @@
   </component>
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/s_melange/home" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/s_melange/streams" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/s_stocks" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/s_stocks/dash_charts" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/s_stocks/spreads" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/GF/home" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/GF/streams" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/GF" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

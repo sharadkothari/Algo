@@ -18,3 +18,4 @@ venv/
 docker-compose.override.yml
 
 common/data/
+GF/

@@ -5,7 +5,7 @@ import random
 import time
 from common.config import get_redis_client_async
 
-SYMBOLS = ["RELIANCE", "TCS", "INFY", "HDFCBANK"]
+SYMBOLS = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "NIFTY 50"]
 
 
 async def push_ticks():

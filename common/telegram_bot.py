@@ -104,7 +104,7 @@ class TelegramBotService(TelegramBot):
                     if check[action] == service_status:
                         return f"service {service} is already f{check[action]}"
                     else:
-                        return requests.get(f"{url_docker_db}/{action}/{self.service_data[service]['id']}").text
+                        return requests.post(f"{url_docker_db}/{action}/{self.service_data[service]['id']}").text
 
     def send_menu(self, title, menu_items):
         inline_keyboard = [menu_items[i:i + 2] for i in range(0, len(menu_items), 2)]

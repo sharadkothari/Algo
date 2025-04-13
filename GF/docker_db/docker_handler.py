@@ -8,6 +8,7 @@ from common.my_logger import logger
 redis_client = get_redis_client()
 DOCKER_BASE_URL = 'tcp://docker:2375'
 
+
 class DockerHandler:
     def __init__(self):
         try:
@@ -40,7 +41,7 @@ class DockerHandler:
             return {'error': 'Failed to connect to Redis'}, 500
         except docker.errors.APIError as e:  # Use errors.APIError
             logger.info(f"Error connecting to Docker: {e}")
-            return {'error': 'Failed to connect to Docker'},500
+            return {'error': 'Failed to connect to Docker'}, 500
         except Exception as e:
             logger.info(f"Error: {e}")
             return 'error', 500
