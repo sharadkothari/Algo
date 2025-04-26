@@ -99,7 +99,7 @@ class Spread:
 
 
 if __name__ == '__main__':
-    s = Spread(live=False, date=dt.date(2025, 3, 26))
+    s = Spread(live=False, date=dt.date(2025, 4, 22))
     s.add_leg("NN", "d0", "CE", 1)
     s.add_leg("NN", "d0", "PE", 1)
     dfs = s.compute_spread()

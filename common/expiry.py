@@ -2,6 +2,8 @@ import json
 import datetime
 from common.config import data_dir
 import numpy as np
+import calendar
+
 
 class Expiry:
     def __init__(self, instrument):
@@ -15,7 +17,7 @@ class Expiry:
         with open(f"{data_dir}/{file_name}", "r") as f:
             return json.load(f)
 
-    def get_expiry_day(self,  date: datetime.date = None):
+    def get_expiry_day(self, date: datetime.date = None):
         date = date or datetime.date.today()
         instrument_rules = self.expiry_days[self.instrument]
         applicable_rule = None
@@ -24,7 +26,7 @@ class Expiry:
             if rule_date <= date:
                 return weekday
 
-    def get_expiry(self,  date: datetime.date = None) -> datetime.date:
+    def get_expiry(self, date: datetime.date = None) -> datetime.date:
         date = date or datetime.date.today()
         expiry_weekday = self.get_expiry_day(date=date)
         days_ahead = (expiry_weekday - date.weekday()) % 7
@@ -36,11 +38,10 @@ class Expiry:
 
         return expiry_date
 
-    def get_exp_str(self, date: datetime.date = None ) -> str:
+    def get_exp_str(self, date: datetime.date = None) -> str:
         exp_date = self.get_expiry(date)
-        next_exp_date = self.get_expiry(date + datetime.timedelta(days=7))
         derivative = self.derivative_data[self.instrument]['derivative_name']
-        if exp_date.month != next_exp_date.month:
+        if self.is_monthly_expiry(exp_date):
             return f'{derivative}{exp_date.year % 100}{exp_date.strftime("%b").upper()}'
 
         mth_wk = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'O', 'N', 'D']
@@ -70,9 +71,21 @@ class Expiry:
 
     def bus_day(self, date, delta):
         holidays = np.array(self.holidays, dtype='datetime64[D]')
-        return np.busday_offset(date, delta, roll='forward',  holidays=holidays).astype('M8[D]').astype(datetime.date)
+        return np.busday_offset(date, delta, roll='forward', holidays=holidays).astype('M8[D]').astype(datetime.date)
+
+    @staticmethod
+    def get_last_weekday(year, month, exp_weekday):
+        last_day = calendar.monthrange(year, month)[1]
+        last_date = datetime.date(year, month, last_day)
+        while last_date.weekday() != exp_weekday:
+            last_date -= datetime.timedelta(days=1)
+        return last_date
+
+    def is_monthly_expiry(self, exp_date: datetime.date):
+        expiry_weekday = self.get_expiry_day(date=exp_date)
+        return exp_date == self.get_last_weekday(exp_date.year, exp_date.month, expiry_weekday)
+
 
 if __name__ == "__main__":
-    e = Expiry("NN")
-    print(e.dte(datetime.date(2025,3,26)))
-
+    e = Expiry("SX")
+    print(e.dte(datetime.date(2025, 3, 26)))

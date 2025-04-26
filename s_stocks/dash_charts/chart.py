@@ -52,11 +52,25 @@ class Chart:
             secondary_y=secondary_y
         )
 
+    @staticmethod
+    def get_colored_time(fig):
+        latest_tick_datetime = pd.to_datetime(fig.data[0].x[-1])
+        latest_tick_time_str = latest_tick_datetime.time().strftime('%H:%M:%S')
+        time_diff_seconds = (dt.datetime.now() - latest_tick_datetime).total_seconds()
+        if time_diff_seconds < 30:
+            color = 'green'
+        elif time_diff_seconds < 60:
+            color = 'orange'
+        else:
+            color = 'red'
+        return f'<span style="color:{color}">{latest_tick_time_str}</span>'
+
     def update_layout(self, fig):
         title = f'{self.data_loader.expiry.underlying()} | {self.data_loader.expiry.dte(self.spread.get_date())}'
+
         if self.data_loader.live:
-            latest_tick_time = pd.to_datetime(fig.data[0].x[-1]).time().strftime('%H:%M:%S')
-            title += f" | {latest_tick_time}"
+            title += f" | {self.get_colored_time(fig)}"
+
         fig.update_layout(
             title=title,
             showlegend=False,

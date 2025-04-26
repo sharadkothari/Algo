@@ -20,7 +20,6 @@
   </style>
 </head>
 <body>
-  <h1>🩺 NIFTY 50 WebSocket Health Monitor</h1>
 
   <div class="card">
     <div class="status" id="status">Connecting...</div>
@@ -61,8 +60,8 @@
     // Recalculate delay every second
     setInterval(() => {
       if (lastExchangeTimestamp) {
-        const now = Date.now() / 1000;
-        const delay = (now - lastExchangeTimestamp).toFixed(2);
+        const now = Date.now();
+        const delay = ((now - lastExchangeTimestamp) / 1000).toFixed(3);
         delayEl.textContent = delay;
         updateHealthStatus(parseFloat(delay));
       } else {
@@ -83,12 +82,14 @@
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          const nifty = data["NIFTY 50"];
+          const nifty = data["NSE:NIFTY 50"];
           if (!nifty) return;
 
-          lastExchangeTimestamp = nifty.exchange_timestamp;
+          const timestampStr = nifty.exchange_timestamp;
+          const dateObj = new Date(timestampStr);
+          lastExchangeTimestamp = dateObj.getTime(); // in milliseconds
           priceEl.textContent = nifty.last_price.toFixed(2);
-          timeEl.textContent = new Date(lastExchangeTimestamp * 1000).toLocaleTimeString();
+          timeEl.textContent = dateObj.toLocaleTimeString();
         } catch (err) {
           console.error("Invalid message:", err);
         }

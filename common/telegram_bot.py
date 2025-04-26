@@ -81,12 +81,12 @@ class TelegramBotService(TelegramBot):
         self.service_data = self.get_service_data()
         self.send("starting...")
 
-    def get_service_data(self):
+    @staticmethod
+    def get_service_data():
         response = requests.get(f"{url_docker_db}/services")
         if response.ok:
             return {item["name"]: {"id": item["containerId"], "status": item["status"][0]} for item in
-                    response.json()[0]}
-
+                    response.json()}
         else:
             return {}
 

@@ -30,7 +30,7 @@ class DynamicCandlesBuilder(BaseService):
         if self.trading_hours.is_open():
             market_close_time = self.trading_hours.get_market_close_time()
             logger.info(f"Starting dynamic candles scheduler until {market_close_time}")
-            self.scheduler.add_job(self.build, "interval", seconds=1.5, id="dynamic_candles", end_date=market_close_time)
+            self.scheduler.add_job(self.build, "interval", seconds=1, id="dynamic_candles", end_date=market_close_time)
             # NEW: Schedule `schedule_tasks()` to run immediately after market close
             self.scheduler.add_job(self.schedule_tasks, "date",
                                    run_date=market_close_time + datetime.timedelta(seconds=5),

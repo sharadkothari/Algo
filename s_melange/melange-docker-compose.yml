@@ -17,21 +17,6 @@ services:
     depends_on:
       - monorepo_base
 
-  melange_telegram:
-    build: ./telegram
-    container_name: melange_telegram
-    restart: always
-    ports: ["5007:5007"]
-    networks: [default]
-    volumes:
-      - ./telegram:/app
-      - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5007
-    depends_on:
-      - monorepo_base
-
   melange_service_status:
     build: ./service_status
     container_name: melange_service_status

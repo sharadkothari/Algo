@@ -75,9 +75,46 @@ class HistQuote:
                 ticker = f'{exp.get_exp_str(self.date)}{strike}{opt_type}'
                 return self.df[self.df.ticker == ticker]
 
+    def get_option_chain(self, timestamp, underlying, ratio):
+        # Filter and make a copy
+        df = self.df[(self.df['date'] == pd.to_datetime(timestamp)) & self.df['ticker'].str.startswith(underlying)].copy()
+
+        # Now safely extract suffix components
+        df[['strikeix_str', 'type']] = df['ticker'].str.extract(r'(d-?\d+)(CE|PE)$')
+
+        # Drop rows where regex didn't match
+        df = df.dropna(subset=['strikeix_str', 'type'])
+
+        # Convert strikeix to integer
+        df['strikeix'] = df['strikeix_str'].str.replace('d', '', regex=False).astype(int)
+
+        # 4. Create separate PE and CE dataframes
+        pe_df = df[df['type'] == 'PE'][['strikeix', 'strike', 'close']]
+        ce_df = df[df['type'] == 'CE'][['strikeix', 'strike', 'close']]
+
+        # Rename columns to avoid conflict after merge
+        pe_df = pe_df.rename(columns={'strike': 'PE_Strike', 'close': 'PE_Close'})
+        ce_df = ce_df.rename(columns={'strike': 'CE_Strike', 'close': 'CE_Close'})
+
+        # 5. Merge PE and CE on strikeix
+        option_chain = pd.merge(pe_df, ce_df, on='strikeix', how='outer').sort_values('strikeix')
+
+        # 6.  Create shifted close columns to divide by
+        option_chain['PE_Close_shift'] = option_chain['PE_Close'].shift(-ratio)
+        option_chain['CE_Close_shift'] = option_chain['CE_Close'].shift(-ratio)
+
+        # 7. Compute ratio columns
+        option_chain[f'PE_R{ratio}'] = option_chain['PE_Close'] / option_chain['PE_Close_shift']
+        option_chain[f'CE_R{ratio}'] = option_chain['CE_Close'] / option_chain['CE_Close_shift']
+
+        # Drop helper columns
+        option_chain.drop(columns=['PE_Close_shift', 'CE_Close_shift'], inplace=True)
+
+        return option_chain
+
 
 if __name__ == '__main__':
     q = HistQuote()
-    start = time.time()
     q.set_date(dt.date(2025, 3, 13))
-    print(time.time() - start)
+    oc = q.get_option_chain(timestamp="2025-03-13 12:20:00", underlying="SENSEX", ratio=5)
+    print(oc)

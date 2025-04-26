@@ -24,7 +24,6 @@ services:
 
     depends_on:
       - melange_alerts
-      - melange_telegram
       - melange_api_gateway
 
 networks:
