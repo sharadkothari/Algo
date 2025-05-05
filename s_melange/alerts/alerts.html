@@ -109,7 +109,13 @@
                 { field: "symbol", headerName: "Symbol", editable: false, rowDrag: true },
                 { field: "timestamp", headerName: "Current Time", editable: false },
                 { field: "last_price", headerName: "Current Price", editable: false },
-                { field: "operator", headerName: "Operator", editable: true, cellEditor: 'agSelectCellEditor', singleClickEdit: true, cellEditorParams: { values: ['<', '=', '>'] } },
+                { field: "operator", headerName: "Operator", editable: true, cellEditor: 'agSelectCellEditor', singleClickEdit: true,
+                          cellEditorParams: { values: ['<', '=', '>'] },
+                          cellRenderer: (params) => {const value = params.value;
+                            let color = 'black'; if (value === '<') color = 'red'; else if (value === '>') color = 'green';
+                            return `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
+                            }
+                },
                 { field: "target", headerName: "Target Value", editable: true, valueParser: numberParser, singleClickEdit: true  },
                 //{ field: "progress", headerName: "Progress", cellRenderer: ProgressBarRenderer },
                 { field: "status", headerName: "Status", editable: false, cellClassRules: { 'status-triggered': params => params.value === 'Triggered'} },
@@ -117,7 +123,13 @@
                      let buttonHtml = "";
                     if (status === "Pending") { buttonHtml = `<button onclick="setAlert('${params.node.id}')">Set</button>`;}
                     else if (status === "Triggered") {buttonHtml = `<button onclick="ackAlert('${id}')">Ack</button>`;}
-                    else if (status === "Active" || status === "Acknowledged") {buttonHtml = `<button onclick="deleteAlert('${id}')">Del</button>`;}
+                    else if (status === "Active") {buttonHtml = `<button onclick="deleteAlert('${id}')">Del</button>`;}
+                    else if (status === "Acknowledged") {
+                        buttonHtml = `
+                            <button onclick="deleteAlert('${id}')">Del</button>
+                            <button onclick="resetAlert('${id}')">Reset</button>
+                        `;
+                    }
                     return buttonHtml;}}
             ],
             rowData: [],
@@ -348,6 +360,26 @@
                     console.error("Error deleting alert", err);
                     window.alert("Error deleting alert");
                 });
+        }
+
+        function resetAlert(id) {
+            let rowNode = gridOptions.api.getRowNode(id);
+            if (!rowNode) return;
+
+            let updatedData = { ...rowNode.data, status: "Active" };
+            rowNode.setData(updatedData);
+
+            // Optionally, you can notify the backend (if needed)
+            $.ajax({
+                url: `alerts/${id}/reset`,
+                type: 'POST',
+                success: function() {
+                    console.log("Alert reset successfully.");
+                },
+                error: function(err) {
+                    console.error("Failed to reset alert", err);
+                }
+            });
         }
 
         function checkTriggers() {

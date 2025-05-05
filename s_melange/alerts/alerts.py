@@ -136,6 +136,22 @@ def acknowledge_alert(alert_id):
     redis_client.hset(alerts_key, alert_id, json.dumps(alert))
     return jsonify({'message': 'Alert acknowledged'})
 
+@app.route('/alerts/<alert_id>/reset', methods=['POST'])
+def reset_alert(alert_id):
+    alert_json = redis_client.hget(alerts_key, alert_id)
+    if not alert_json:
+        return jsonify({'error': 'Alert not found'}), 404
+
+    alert = json.loads(alert_json)
+
+    if alert['status'] != 'Acknowledged':
+        return jsonify({'error': 'Only acknowledged alerts can be reset'}), 400
+
+    alert['status'] = 'Active'
+    alert['timestamp'] = datetime.datetime.now().isoformat()
+    redis_client.hset(alerts_key, alert_id, json.dumps(alert))
+
+    return jsonify({'message': 'Alert reset to Active'})
 
 OPERATORS = {
     '<': lambda a, b: a < b,
