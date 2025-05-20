@@ -44,7 +44,6 @@ class Encrypt:
 
 
 if __name__ == "__main__":
-    e = Encrypt("MIM066")
-    a = e.encrypt("4uayorojswj975jcqdel6s3rde3t58s1")
-    b = e.decrypt(a)
-    print(a, b)
+    e = Encrypt("YLCGN")
+    print(e.encrypt("iGo1ofkqrrKkfKD7oT0aHvsP0uka"))
+    print(e.encrypt("Kotak@1"))
