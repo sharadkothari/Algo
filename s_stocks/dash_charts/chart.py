@@ -133,7 +133,7 @@ class Chart:
 if __name__ == '__main__':
     from data_loader import DataLoader
 
-    d = DataLoader("dash2")
+    d = DataLoader("dash1")
     c = Chart(d)
     _fig = c.plot()
-    # _fig.show()
+    _fig.show()
