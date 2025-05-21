@@ -15,7 +15,7 @@ data_dir = base_dir / 'common/data/'
 
 bhavcopy_dir = base_dir_prv / 'bhavcopy'
 
-if os.getenv("DOCKERIZED"):
+if Path('/.dockerenv').exists():
     parquet_dir = Path("/app/parquet")  # Docker path
     url_docker_db = "http://nginx/api/docker_db"
 else:
