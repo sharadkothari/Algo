@@ -70,7 +70,7 @@ class KiteSocket(BaseService):
             ws.set_mode(ws.MODE_FULL, tokens)
 
         def on_ticks(ws, ticks):
-            if not self.is_running or self.inst_symbol_dict is None or id(ws) != self.kws_id:
+            if not self.is_running or self.inst_symbol_dict is None:  # or id(ws) != self.kws_id:
                 return
             _ = ws
             self.last_tick_time = time.time()
