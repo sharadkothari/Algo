@@ -110,6 +110,13 @@
 
     // Start the socket
     connectSocket();
+
+    const refreshIntervalMs = 5 * 60 * 1000; // 5 minutes
+    setTimeout(() => {
+      console.log(`🔄 Auto-refreshing after ${refreshIntervalMs / 1000}s`);
+      location.reload();
+    }, refreshIntervalMs);
+
   </script>
 </body>
 </html>
