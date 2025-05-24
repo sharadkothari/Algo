@@ -6,10 +6,10 @@ from common.config import get_redis_client, get_browser_profiles
 from common.my_logger import logger
 from common.utils import TimeCalc
 from playwright.async_api import async_playwright
+from common.telegram_bot import TelegramBotService as TelegramBot
+import time
 
-
-client_ids = ['sivdu', 'ylcgn']
-
+tbot = TelegramBot(send_only=True)
 
 def get_temp_folder(profile):
     user_data_dir = os.path.expanduser("~/Library/Application Support/Microsoft Edge")
@@ -60,7 +60,7 @@ def store_token(client, token):
     r.hset('browser_token', client, token)
 
 
-async def get_token_async():
+async def get_token_async(client_ids):
     logger.info(f"Getting tokens for | {client_ids}")
     browser_profiles = get_browser_profiles()
 
@@ -70,6 +70,7 @@ async def get_token_async():
             profile = browser_profiles.get(client)
             if not profile:
                 logger.warning(f"{client} | ❌ profile not found")
+                tbot.send(f"{client} |  ❌ error")
                 continue
             tasks.append(extract_token(playwright, client, profile))
 
@@ -79,11 +80,12 @@ async def get_token_async():
         if token:
             store_token(client, token)
             logger.info(f"{client} | ✅ token stored")
+            tbot.send(f"{client} | ✅ token stored")
         else:
             logger.warning(f"{client} | ❌ token not found")
-
-def get_token():
-    asyncio.run(get_token_async())
+            tbot.send(f"{client} |  ❌ error")
+def get_token(client_ids=('sivdu', 'ylcgn')):
+    asyncio.run(get_token_async(client_ids))
 
 
 if __name__ == '__main__':

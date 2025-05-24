@@ -43,5 +43,11 @@ def get_browser_profiles():
     return cfg_node[platform.node()]['profiles']
 
 
+def get_broker_ids():
+    with open(base_dir / "common/config_brokers.yaml") as f:
+        cfg_brokers = yaml.safe_load(f)
+    return cfg_brokers['id']
+
+
 if __name__ == "__main__":
     print(get_browser_profiles())

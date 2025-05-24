@@ -5,7 +5,7 @@ from common.my_logger import logger
 import re
 import requests
 import json
-
+from common.config import get_broker_ids
 
 class TelegramBot:
     _instances = {}  # Store single instances per chat_id
@@ -80,6 +80,11 @@ class TelegramBotService(TelegramBot):
         self.status_icon = {"running": "🟢", "exited": "🔴"}
         self.service_data = self.get_service_data()
         self.send("starting...")
+        self.broker_ids = self.get_broker_ids()
+
+    @staticmethod
+    def get_broker_ids():
+        return [item for k, v in get_broker_ids().items() for item in [k] + v] + ["all"]
 
     @staticmethod
     def get_service_data():
@@ -115,7 +120,7 @@ class TelegramBotService(TelegramBot):
 
         match text := message['data']:
             case "/menu":
-                self.send_menu("MENU", ("start", "stop", "status"))
+                self.send_menu("MENU", ("start", "stop", "status", "token"))
 
             case "/refresh":
                 self.service_data = self.get_service_data()
@@ -133,6 +138,17 @@ class TelegramBotService(TelegramBot):
             case cmd if (m := re.match(r"^/(start|stop)\s+(\S+)", cmd)):
                 action, service = m.groups()
                 self.send(self.service_action(service=cmd.split()[1], action=action))
+
+            case cmd if re.match(r"^/(menu\s)?token$", cmd):
+                self.send_menu("token", tuple(self.broker_ids))
+
+            case cmd if (m := re.match(r"^/token\s+(\S+)$", cmd)):
+                broker_id = m.group(1)
+                if broker_id.lower() in self.broker_ids:
+                    self.send(f"updating token: {broker_id}")
+                    self.redis_client.publish("token_update", broker_id)
+                else:
+                    self.send(f"{broker_id} not found")
 
             case _:
                 self.send(f"unknown service cmd: {message['data']}")

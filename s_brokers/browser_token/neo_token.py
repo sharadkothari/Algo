@@ -7,8 +7,7 @@ import shutil
 import tempfile
 
 
-def get_token():
-    client_id = ['sivdu', 'ylcgn']
+def get_token(client_id = ('sivdu', 'ylcgn')):
     logger.info(f"Getting tokens for | {client_id}")
     browser_profiles = get_browser_profiles()
     for client in client_id:
@@ -71,4 +70,4 @@ def extract_token(temp_folder, profile):
 
 
 if __name__ == '__main__':
-    get_tokens()
+    get_token()

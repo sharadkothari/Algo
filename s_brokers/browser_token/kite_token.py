@@ -7,8 +7,7 @@ def get_cookie_token(cookie_path):
     return f"enctoken {cj._cookies['kite.zerodha.com']['/']['enctoken'].value}"
 
 
-def get_token():
-    client_ids = ['ym3006', 'rs5756', 'mim066']
+def get_token(client_ids=('ym3006', 'rs5756', 'mim066')):
     CommonToken(client_ids, get_cookie_token)
 
 

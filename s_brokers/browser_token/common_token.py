@@ -2,6 +2,11 @@ from common.utils import TimeCalc
 from common.config import get_redis_client, get_browser_profiles
 from common.my_logger import logger
 import os
+from common.telegram_bot import TelegramBotService as TelegramBot
+import time
+
+tbot = TelegramBot(send_only=True)
+
 
 class CommonToken:
 
@@ -22,15 +27,22 @@ class CommonToken:
         logger.info(f"Getting tokens for | {self.client_ids}")
 
         for client in self.client_ids:
+            token_stored = False
             profile = self.browser_profiles.get(client)
             if not profile:
                 logger.warning(f"{client} | ❌ profile not found")
-                continue
-
-            try:
-                cookie_path = os.path.join(os.path.expanduser('~'),f'Library/Application Support/Microsoft Edge/{profile}/Cookies')
-                token = self.get_cookie_token(cookie_path)
-                self.store_token(client, token)
-                logger.info(f"{client} | ✅ token stored")
-            except Exception as e:
-                logger.warning(f"{client} | ❌ token not found / error: {str(e)}")
+            else:
+                try:
+                    cookie_path = os.path.join(os.path.expanduser('~'),
+                                               f'Library/Application Support/Microsoft Edge/{profile}/Cookies')
+                    token = self.get_cookie_token(cookie_path)
+                    self.store_token(client, token)
+                    logger.info(f"{client} | ✅ token stored")
+                    token_stored = True
+                except Exception as e:
+                    logger.warning(f"{client} | ❌ token not found / error: {str(e)}")
+            if token_stored:
+                tbot.send(f"{client} | ✅ token stored")
+            else:
+                tbot.send(f"{client} |  ❌ error")
+            time.sleep(1)
