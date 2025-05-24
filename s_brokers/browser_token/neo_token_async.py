@@ -84,6 +84,7 @@ async def get_token_async(client_ids):
         else:
             logger.warning(f"{client} | ❌ token not found")
             tbot.send(f"{client} |  ❌ error")
+        await asyncio.sleep(1)
 def get_token(client_ids=('sivdu', 'ylcgn')):
     asyncio.run(get_token_async(client_ids))
 
