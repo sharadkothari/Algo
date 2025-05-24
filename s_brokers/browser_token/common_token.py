@@ -1,0 +1,36 @@
+from common.utils import TimeCalc
+from common.config import get_redis_client, get_browser_profiles
+from common.my_logger import logger
+import os
+
+class CommonToken:
+
+    def __init__(self, client_ids: list, get_cookie_token):
+        self.client_ids = client_ids
+        self.get_cookie_token = get_cookie_token
+        self.r = get_redis_client()
+        tc = TimeCalc()
+        self.expiry_ts = int(tc.next_6am().timestamp())
+        self.browser_profiles = get_browser_profiles()
+        self.extract_token()
+
+    def store_token(self, client, token):
+        self.r.expireat("browser_token", self.expiry_ts)
+        self.r.hset('browser_token', client, token)
+
+    def extract_token(self):
+        logger.info(f"Getting tokens for | {self.client_ids}")
+
+        for client in self.client_ids:
+            profile = self.browser_profiles.get(client)
+            if not profile:
+                logger.warning(f"{client} | ❌ profile not found")
+                continue
+
+            try:
+                cookie_path = os.path.join(os.path.expanduser('~'),f'Library/Application Support/Microsoft Edge/{profile}/Cookies')
+                token = self.get_cookie_token(cookie_path)
+                self.store_token(client, token)
+                logger.info(f"{client} | ✅ token stored")
+            except Exception as e:
+                logger.warning(f"{client} | ❌ token not found / error: {str(e)}")

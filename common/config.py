@@ -1,6 +1,8 @@
 from pathlib import Path
 import redis
 import os
+import yaml
+import platform
 
 server_url = 'http://100.123.122.115'
 redis_host = '100.123.122.115'
@@ -34,5 +36,12 @@ async def get_redis_client_async():
     await redis_client.config_set('notify-keyspace-events', 'Khg')
     return redis_client
 
+
+def get_browser_profiles():
+    with open(base_dir / "common/config_node.yaml") as f:
+        cfg_node = yaml.safe_load(f)
+    return cfg_node[platform.node()]['profiles']
+
+
 if __name__ == "__main__":
-    _redis_client = get_redis_client()
+    print(get_browser_profiles())

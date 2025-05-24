@@ -42,6 +42,18 @@ class Encrypt:
         return "".join(chr(e ^ ord(k)) for e, k in zip(encrypted_bytes, extended_key))
 
 
+class TimeCalc:
+    def __init__(self):
+        ...
+
+    @staticmethod
+    def next_6am(hour=6):
+        now = datetime.datetime.now()
+        if now.hour >= hour:
+            next_6am = (now + datetime.timedelta(days=1)).replace(hour=hour, minute=0, second=0, microsecond=0)
+        else:
+            next_6am = now.replace(hour=6, minute=0, second=0, microsecond=0)
+        return next_6am
 
 if __name__ == "__main__":
     e = Encrypt("YLCGN")
