@@ -10,9 +10,10 @@ tbot = TelegramBot(send_only=True)
 
 class CommonToken:
 
-    def __init__(self, client_ids: list, get_cookie_token):
+    def __init__(self, client_ids: list, get_cookie_token, validate_token):
         self.client_ids = client_ids
         self.get_cookie_token = get_cookie_token
+        self.validate_token = validate_token
         self.r = get_redis_client()
         tc = TimeCalc()
         self.expiry_ts = int(tc.next_6am().timestamp())
@@ -36,9 +37,12 @@ class CommonToken:
                     cookie_path = os.path.join(os.path.expanduser('~'),
                                                f'Library/Application Support/Microsoft Edge/{profile}/Cookies')
                     token = self.get_cookie_token(cookie_path)
-                    self.store_token(client, token)
-                    logger.info(f"{client} | ✅ token stored")
-                    token_stored = True
+                    if self.validate_token(token, client):
+                        self.store_token(client, token)
+                        logger.info(f"{client} | ✅ token stored")
+                        token_stored = True
+                    else:
+                        logger.info(f"{client} | ❌ token expired")
                 except Exception as e:
                     logger.warning(f"{client} | ❌ token not found / error: {str(e)}")
             if token_stored:
