@@ -43,7 +43,7 @@ class KiteSocket(BaseService):
         self.kite = KiteConnect(self.api_key)
         self.last_tick_time = time.time()
         self.ticks = {}
-        self.tick_dq = deque()
+        self.tick_dq = deque(deque(maxlen=5000)) # old ticks auto-evicted
         self.is_running = False
         self.date_str = None
         self.start()
@@ -136,20 +136,22 @@ class KiteSocket(BaseService):
 
         def update_redis():
             try:
-                with self.redis.pipeline() as pipe:
-                    hash_key = f'tick:{self.date_str}'
-                    list_key = 'ticks'
-                    tick_json = None
-                    while self.tick_dq:
-                        tick = self.tick_dq.popleft()
-                        tick_json = json.dumps(tick, default=lambda x: x.isoformat())
-                        pipe.publish("tick_channel", tick_json)
-                        pipe.lpush(list_key, tick_json)
-                        for key, value in tick.items():
-                            pipe.hset(hash_key, key, json.dumps(value, default=lambda x: x.isoformat()))
-                    pipe.expire(hash_key, 24 * 60 * 60)
-                    pipe.expire(list_key, 24 * 60 * 60)
-                    pipe.execute()
+                hash_key = f'tick:{self.date_str}'
+                list_key = 'ticks'
+                tick_json = None
+
+                while self.tick_dq:
+                    with self.redis.pipeline() as pipe:
+                        for _ in range(min(100, len(self.tick_dq))):
+                            tick = self.tick_dq.popleft()
+                            tick_json = json.dumps(tick, default=lambda x: x.isoformat())
+                            pipe.publish("tick_channel", tick_json)
+                            pipe.lpush(list_key, tick_json)
+                            for key, value in tick.items():
+                                pipe.hset(hash_key, key, json.dumps(value, default=lambda x: x.isoformat()))
+                        pipe.expire(hash_key, 24 * 60 * 60)
+                        pipe.expire(list_key, 24 * 60 * 60)
+                        pipe.execute()
             except redis.RedisError as e:
                 logger.error(f"Redis pipeline execution failed: {e}")
 

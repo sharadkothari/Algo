@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-from quote_socket.quote_socket import router as ws_router
+from trade_socket.trade_socket import router as ws_router
 from test.test import router as test_router
 from docker_db.docker_db import router as docker_db_router
 from health.health import router as health_router

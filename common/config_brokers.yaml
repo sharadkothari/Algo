@@ -9,3 +9,6 @@ id:
   neo:
     - ylcgn
     - sivdu
+
+redis:
+  token: "browser_token"

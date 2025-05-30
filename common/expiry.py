@@ -85,7 +85,20 @@ class Expiry:
         expiry_weekday = self.get_expiry_day(date=exp_date)
         return exp_date == self.get_last_weekday(exp_date.year, exp_date.month, expiry_weekday)
 
+    def get_monthly_expiry(self, date: datetime.date):
+        # won't work if  date is after monthly expiry
+        expiry_weekday = self.get_expiry_day(date=date)
+        last_weekday = self.get_last_weekday(date.year, date.month, expiry_weekday)
+        return self.get_expiry(last_weekday)
+
+    def expand_exp_str(self, exp_str: str):
+        if exp_str[2:].isdigit():  #weekly expiry e.g.25529
+            return datetime.date(2000 + int(exp_str[:2]), int(exp_str[2]), int(exp_str[3:]))
+        else:  # monthly expiry
+            date = datetime.datetime.strptime(exp_str + "01", "%y%b%d").date()
+            return self.get_monthly_expiry(date)
+
 
 if __name__ == "__main__":
-    e = Expiry("SX")
-    print(e.dte(datetime.date(2025, 3, 26)))
+    e = Expiry("NN")
+    print(e.expand_exp_str(exp_str="25529"))
