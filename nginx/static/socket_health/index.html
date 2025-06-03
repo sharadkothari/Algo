@@ -90,8 +90,13 @@
 
       socket.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const  message = JSON.parse(event.data);
+
+          if (message.type !== "tick") return;
+
+          const data = message.data
           const nifty = data["NSE:NIFTY 50"];
+          console.log(nifty)
           if (!nifty) return;
 
           const timestampStr = nifty.exchange_timestamp;

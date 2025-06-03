@@ -1,13 +1,16 @@
 import asyncio
 from data_poller import DataPoller
-from Kite import Kite
-from common.config import get_broker_ids
-
 
 async def main():
     db = DataPoller()
-    await db.start()
-
+    try:
+        await db.start()
+    except asyncio.CancelledError:
+        print("Shutting down... CancelledError caught.")
+        await db.shutdown()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Shutdown requested by user (KeyboardInterrupt).")

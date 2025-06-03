@@ -1,56 +1,22 @@
-import json
 import aiohttp
 import asyncio
 import pandas as pd
-import datetime
 import os
-from common.config import get_redis_client_async
-from collections.abc import Coroutine
 from common.my_logger import logger
 from reshape_data import ReshapeData
+from brokers import Broker
 
 config_dir = os.path.realpath('../') + '/config/'
 
 
-class Kite:
+class Kite(Broker):
 
-    def __init__(self, userid: str, authorisation: str, ticks: dict):
+    def __init__(self, userid: str, token: str, ticks: dict):
+        super().__init__(userid, token, ticks)
         self.name = 'kite'
-        self.userid = userid
-        self.authorization = authorisation
-        self.ticks = ticks
         self.base_url = 'https://kite.zerodha.com/oms/'
         self.saved_data = {}
-        self.rd = ReshapeData(broker = f'{self.name}:{self.userid}', ticks = self.ticks, )
-
-    @classmethod
-    async def create(cls, userid: str, ticks: dict):
-        r = await get_redis_client_async()
-        token = await r.hget("browser_token", userid.lower())
-        return cls(userid, token, ticks)
-
-    async def get_token(self):
-        r = await get_redis_client_async()
-        return await r.hget("browser_token", self.userid.lower())
-
-    def headers(self):
-        return {
-            'authorization': self.authorization
-        }
-
-    async def get_response(self, path, params=None):
-        timeout = aiohttp.ClientTimeout(total=3)
-        async with aiohttp.ClientSession(headers=self.headers(), timeout=timeout) as session:
-            try:
-                async with session.get(f'{self.base_url}{path}', params=params) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    else:
-                        logger.info(f"Non-200 status for {path}: {response.status}")
-            except asyncio.TimeoutError:
-                logger.info(f"Timeout fetching {path}")
-            except Exception as e:
-                logger.info(f"Error fetching {path}: {e}")
+        self.rd = ReshapeData(broker=f'{self.name}:{self.userid}', ticks=self.ticks, )
 
     async def holdings(self):
         return await self.get_response(path="portfolio/holdings")
@@ -62,20 +28,19 @@ class Kite:
         return await self.get_response(path="portfolio/positions")
 
     async def orders(self):
-
         return await self.get_response(path="orders")
 
     async def trades(self):
         return await self.get_response(path="trades")
 
-    async def margins(self):
-        return await self.get_response(path="user/margins")
+    async def limits(self, validation_call=False):
+        return await self.get_response(path="user/margins", validation_call=validation_call)
 
     async def funds(self):
         return await self.get_response(path="funds")
 
     async def margin_book(self):
-        margins = await self.margins()
+        margins = await self.limits()
 
         if margins is not None and margins['status'] == 'success':
             margins = margins['data']
@@ -85,13 +50,14 @@ class Kite:
             total = available + used
             self.saved_data['max_margin_used'] = max(self.saved_data.get('max_margin_used', 0.0), used)
 
-            return {
-                'used': used,
-                'max_used': self.saved_data['max_margin_used'],
-                'available': available,
-                'total': total,
-                'cash': cash
-            }
+            return self.rd.margin_book(
+                {
+                    'used': used,
+                    'max_used': self.saved_data['max_margin_used'],
+                    'available': available,
+                    'total': total,
+                    'cash': cash
+                })
 
     async def position_book(self):
         columns = {'tradingsymbol': 'symbol', 'exchange': 'exch',

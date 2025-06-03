@@ -165,7 +165,7 @@ class KiteSocket(BaseService):
             update_redis()
             start_ticker()
             # heartbeat_check()
-            time.sleep(0.1)
+            # time.sleep(0.1)
 
     @staticmethod
     def restart_program():

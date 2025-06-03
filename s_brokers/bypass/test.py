@@ -1,10 +1,19 @@
 import asyncio
-from Kite import Kite
-
+from kite import Kite
+from shoonya import Shoonya
+from neo import Neo
+from common.config import get_redis_client_async
 
 async def main():
-    kite = await Kite.create("ym3006", {})
-    print(await kite.position_book())
+    r = await get_redis_client_async()
+    tick = await r.hgetall("tick:20250603")
+    #broker = await Kite.create("rs5756", tick)
+    #broker = await Shoonya.create("fa97273", tick)
+    broker = await Neo.create("sivdu", tick)
+    #await asyncio.sleep(5)
+    #broker.start_token_validation()
+    print(await broker.position_book())
+    #await broker.stop_token_validation()
 
 
 if __name__ == "__main__":

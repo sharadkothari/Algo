@@ -2,7 +2,7 @@ import sys
 
 from kite_token import get_token as get_kite_token
 from shoonya_token import get_token as get_shoonya_token
-from neo_token_async import get_token as get_neo_token
+from neo_token import get_token as get_neo_token
 from common.config import get_broker_ids
 from common.config import get_redis_client
 import time

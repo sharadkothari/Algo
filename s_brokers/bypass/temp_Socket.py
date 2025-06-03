@@ -13,8 +13,9 @@ async def receive_market_ticks():
                 while True: # Loop to continuously receive messages
                     try:
                         message = await websocket.recv()
-                        tick_data = json.loads(message)
-                        ticks |= tick_data
+                        message = json.loads(message)
+                        if message["type"] == "tick":
+                            print(message["data"].get('NSE:NIFTY 50'))
                     except Exception as e:
                         print(f"An error occurred while receiving a message: {e}. Attempting to reconnect...")
                         break # Exit inner loop to attempt re-connection

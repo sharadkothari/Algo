@@ -37,7 +37,7 @@
         };
 
         const gridDiv = document.querySelector("#grid-container");
-        const gridApi = agGrid.createGrid(gridDiv, gridOptions);
+        let gridApi = agGrid.createGrid(gridDiv, gridOptions);
 
         const services = [
             { name: "E7270", url: "flask" },

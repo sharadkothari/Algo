@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Position Book</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif; /* Added Inter font */
+    }
+    #myGrid {
+      height: 400px;  /* Make sure there's enough space */
+      width: 100%;
+      border-radius: 8px; /* Added rounded corners */
+      overflow: hidden; /* Ensures rounded corners are applied to grid */
+    }
+
+    /* Alternate row shading for ag-theme-alpine */
+    .ag-theme-alpine .ag-row-odd {
+      background-color: #f9f9f9;
+    }
+
+    .ag-theme-alpine .ag-row-even {
+      background-color: #ffffff;
+    }
+
+    .ag-theme-alpine .ag-header-cell {
+        font-size: 18px;
+        font-weight: bold;
+        background-color: #e0e7ff; /* Light blue header */
+        color: #374151; /* Darker text for header */
+    }
+    .ag-theme-alpine .ag-cell {
+        font-size: 16px; /* Slightly smaller cell font */
+        padding: 8px; /* Add some padding to cells */
+    }
+
+
+    /* Basic Tailwind-like classes for overall layout */
+    .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f3f4f6; /* Light gray background */
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .grid-wrapper {
+        width: 100%;
+        max-width: 1200px; /* Max width for the grid */
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+        padding: 20px;
+    }
+
+    .ag-theme-alpine .ag-footer-cell {
+      font-weight: bold;
+      background-color: #e0e7ff; /* Matches header background */
+      color: #374151; /* Matches header text color */
+    }
+
+  </style>
+</head>
+<body>
+  <div id="myGrid" class="ag-theme-alpine" style="height: 375px; width:100%;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise/dist/ag-grid-enterprise.min.js"></script>
+  <script>
+
+    const gridOptions = {
+      columnDefs: [
+      { field: 'Broker',
+          cellRenderer: params => {if (params.node.footer) { return '<strong>Total</strong>'; } return params.value; }
+      },
+        { field: 'PE_Qty', aggFunc: 'sum' },
+        { field: 'CE_Qty', aggFunc: 'sum' },
+        { field: 'Premium', aggFunc: 'sum',valueFormatter: params => formatInt(params.value)},
+        {
+          field: 'MTM',
+          aggFunc: 'sum',
+          valueFormatter: params => formatInt(params.value)
+        },
+        {
+          field: 'Pos_Delta',
+          headerName: 'Pos Δ',
+          aggFunc: 'sum',
+          valueFormatter: params => formatFloat(params.value, 2)
+        },
+        {
+          field: 'timestamp',
+          headerName: 'Updated At',
+          valueFormatter: params => {
+            const date = new Date(params.value);
+            return isNaN(date)
+              ? params.value
+              : date.toLocaleTimeString('en-GB', { hour12: false });
+          }
+        }
+      ],
+      rowData: [],
+      getRowId: params => (params.data.Broker || '').trim(),
+      animateRows: true,
+      grandTotalRow: "bottom",
+    };
+
+    let gridApi;
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const myGridElement = document.querySelector('#myGrid');
+      gridApi = agGrid.createGrid(myGridElement, gridOptions);
+
+      const ws = new WebSocket('ws://e7270:5009/ws/');
+
+      ws.onmessage = function (event) {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'position_book') {
+          const update = {
+            ...msg.data,
+            Broker: msg.data.Broker.trim()
+          };
+
+          const existingNode = gridApi.getRowNode(update.Broker);
+          if (existingNode) {
+            existingNode.setData(update);
+          } else {
+            gridApi.applyTransaction({ add: [update] });
+          }
+        }
+      };
+
+      ws.onopen = () => console.log('✅ WebSocket connected');
+      ws.onclose = () => console.log('❌ WebSocket disconnected');
+      ws.onerror = e => console.error('WebSocket error:', e);
+    });
+
+    function formatInt(val) {
+      const num = parseFloat(val);
+      return isNaN(num) ? '' : num.toFixed(0);
+    }
+
+    function formatFloat(val, precision) {
+      const num = parseFloat(val);
+      return isNaN(num) ? '' : num.toFixed(precision);
+    }
+
+  </script>
+</body>
+</html>

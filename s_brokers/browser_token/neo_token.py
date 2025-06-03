@@ -1,31 +1,15 @@
-from common.config import get_redis_client, get_browser_profiles
-from common.my_logger import logger
-from common.utils import TimeCalc
-from playwright.sync_api import sync_playwright
 import os
 import shutil
 import tempfile
+import asyncio
+from common.config import get_redis_client, get_browser_profiles
+from common.my_logger import logger
+from common.utils import TimeCalc
+from playwright.async_api import async_playwright
+from common.telegram_bot import TelegramBotService as TelegramBot
+import time
 
-
-def get_token(client_id = ('sivdu', 'ylcgn')):
-    logger.info(f"Getting tokens for | {client_id}")
-    browser_profiles = get_browser_profiles()
-    for client in client_id:
-        profile = browser_profiles[client]
-        temp_folder = get_temp_folder(profile)
-        token = extract_token(temp_folder, profile)
-        if token['auth'] is not None:
-            store_token(client, token['auth'])
-            logger.info(f"{client} | ✅ token stored")
-        else:
-            logger.info(f"{client} | ❌ token not found")
-
-
-def store_token(client, token):
-    r = get_redis_client()
-    tc = TimeCalc()
-    r.expireat("browser_token", int(tc.next_6am().timestamp()))
-    r.hset('browser_token', client, token)
+tbot = TelegramBot(send_only=True)
 
 
 def get_temp_folder(profile):
@@ -37,36 +21,75 @@ def get_temp_folder(profile):
     return temp_user_data_folder
 
 
-def get_browser(p: sync_playwright, temp_folder, profile):
-    return p.chromium.launch_persistent_context(
+async def get_browser(playwright, temp_folder, profile):
+    return await playwright.chromium.launch_persistent_context(
         user_data_dir=temp_folder,
-        headless=True,  # Run in headless mode
-        channel="msedge",  # Use installed Microsoft Edge
+        headless=True,
+        channel="msedge",
         args=[f"--profile-directory={profile}"]
     )
 
 
-def extract_token(temp_folder, profile):
-    def handle_request(route, request):
+async def extract_token(playwright, client, profile):
+    token = {}
+    temp_folder = get_temp_folder(profile)
+
+    async def handle_request(route, request):
         headers = request.headers
         if 'authorization' in headers:
-            token['auth'] = headers['authorization']
-        route.continue_()
+            token['auth'] = f"{headers['authorization']}::{headers['sid']}"
+        await route.continue_()
 
-    token = {'auth': None}
     try:
-        with sync_playwright() as p:
-            browser = get_browser(p, temp_folder, profile)
-            page = browser.new_page()
-
-            page.route("**/*", handle_request)
-            page.goto("https://ntrade.kotaksecurities.com/")
-            page.wait_for_load_state("networkidle", timeout=10000)
-
-            browser.close()
+        browser = await get_browser(playwright, temp_folder, profile)
+        page = await browser.new_page()
+        await page.route("**/*", handle_request)
+        await page.goto("https://ntrade.kotaksecurities.com/")
+        await page.wait_for_load_state("networkidle", timeout=10000)
+        await browser.close()
+    except Exception as e:
+        logger.warning(f"{client} | ❌ error extracting token: {e}")
     finally:
         shutil.rmtree(temp_folder, ignore_errors=True)
-        return token
+    return client, token['auth']
+
+
+def store_token(client, token):
+    r = get_redis_client()
+    tc = TimeCalc()
+    r.expireat("browser_token", int(tc.next_6am().timestamp()))
+    r.hset('browser_token', client, token)
+
+
+async def get_token_async(client_ids):
+    logger.info(f"Getting tokens for | {client_ids}")
+    browser_profiles = get_browser_profiles()
+
+    async with async_playwright() as playwright:
+        tasks = []
+        for client in client_ids:
+            profile = browser_profiles.get(client)
+            if not profile:
+                logger.warning(f"{client} | ❌ profile not found")
+                tbot.send(f"{client} |  ❌ error")
+                continue
+            tasks.append(extract_token(playwright, client, profile))
+
+        results = await asyncio.gather(*tasks)
+
+    for client, token in results:
+        if token:
+            store_token(client, token)
+            logger.info(f"{client} | ✅ token stored")
+            tbot.send(f"{client} | ✅ token stored")
+        else:
+            logger.warning(f"{client} | ❌ token not found")
+            tbot.send(f"{client} |  ❌ error")
+        await asyncio.sleep(1)
+
+
+def get_token(client_ids=('sivdu', 'ylcgn')):
+    asyncio.run(get_token_async(client_ids))
 
 
 if __name__ == '__main__':

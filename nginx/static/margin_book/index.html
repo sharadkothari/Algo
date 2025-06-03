@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Margin Book Grid</title>
+  <style>
+    html, body, #myGrid {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Alternate row shading for ag-theme-alpine */
+    .ag-theme-alpine .ag-row-odd {
+      background-color: #f9f9f9;
+    }
+
+    .ag-theme-alpine .ag-row-even {
+      background-color: #ffffff;
+    }
+
+    .ag-theme-alpine .ag-header-cell {
+        font-size: 18px;
+        font-weight: bold;
+        }
+    .ag-theme-alpine .ag-cell {
+        font-size: 18px;
+        }
+
+  </style>
+</head>
+<body>
+  <div id="myGrid" class="ag-theme-alpine" style="height: 375px; width:100%;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise/dist/ag-grid-enterprise.min.js"></script>
+  <script>
+    const gridOptions = {
+      columnDefs: [
+        { field: 'Broker' },
+        { field: 'Total' },
+        { field: 'Used' },
+        { field: 'Max' },
+        { field: 'Bal' },
+        { field: 'Cash' },
+        {
+          field: 'timestamp',
+          headerName: 'Updated At',
+          valueFormatter: params => {
+            const date = new Date(params.value);
+            return isNaN(date)
+              ? params.value
+              : date.toLocaleTimeString('en-GB', { hour12: false });
+          }
+        }
+      ],
+      rowData: [],
+      getRowId: params => params.data.Broker.trim(),
+      animateRows: true,
+    };
+
+    let gridApi;
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const myGridElement = document.querySelector('#myGrid');
+      gridApi = agGrid.createGrid(myGridElement, gridOptions);
+
+      const ws = new WebSocket('ws://e7270:5009/ws/');
+
+      ws.onmessage = function (event) {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'margin_book') {
+          const update = {
+            ...msg.data,
+            Broker: msg.data.Broker.trim()
+          };
+
+          const existingNode = gridApi.getRowNode(update.Broker);
+          if (existingNode) {
+            existingNode.setData(update);
+          } else {
+            gridApi.applyTransaction({ add: [update] });
+          }
+        }
+      };
+
+      ws.onopen = () => console.log('✅ WebSocket connected');
+      ws.onclose = () => console.log('❌ WebSocket disconnected');
+      ws.onerror = e => console.error('WebSocket error:', e);
+    });
+  </script>
+</body>
+</html>
