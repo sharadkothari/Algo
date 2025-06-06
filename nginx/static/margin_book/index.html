@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Margin Book Grid</title>
-  <style>
-    html, body, #myGrid {
+  <title>Margin Book</title>
+
+    <style>
+    html, body {
       height: 100%;
-      width: 100%;
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Inter', sans-serif;
+    }
+    #myGrid {
+      height: 400px;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
     }
 
     /* Alternate row shading for ag-theme-alpine */
@@ -23,10 +29,46 @@
     .ag-theme-alpine .ag-header-cell {
         font-size: 18px;
         font-weight: bold;
+        background-color: #e0e7ff; /* Light blue header */
+        color: #374151; /* Darker text for header */
+    }
+
+    .ag-theme-alpine .ag-header-cell {
+        font-size: 18px;
+        font-weight: bold;
         }
     .ag-theme-alpine .ag-cell {
-        font-size: 18px;
+        font-size: 16px;
+        padding: 8px;
         }
+
+        /* Basic Tailwind-like classes for overall layout */
+    .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f3f4f6; /* Light gray background */
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .grid-wrapper {
+        width: 100%;
+        max-width: 1200px; /* Max width for the grid */
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+        padding: 20px;
+    }
+
+    .ag-theme-alpine .ag-footer-cell {
+      font-weight: bold;
+      background-color: #e0e7ff; /* Matches header background */
+      color: #374151; /* Matches header text color */
+
+    }
+
 
   </style>
 </head>
@@ -46,20 +88,18 @@
         {
           field: 'timestamp',
           headerName: 'Updated At',
-          valueFormatter: params => {
-            const date = new Date(params.value);
-            return isNaN(date)
-              ? params.value
-              : date.toLocaleTimeString('en-GB', { hour12: false });
-          }
+          valueFormatter: formatTimestampAgo,
         }
       ],
       rowData: [],
       getRowId: params => params.data.Broker.trim(),
       animateRows: true,
+      autoSizeStrategy: {type: 'fitGridWidth', },
     };
 
     let gridApi;
+    let titleUpdateInterval; // Declare a variable for the interval
+    let lastReceivedTimestamp = null; // Store the latest timestamp received
 
     document.addEventListener('DOMContentLoaded', function () {
       const myGridElement = document.querySelector('#myGrid');
@@ -82,13 +122,66 @@
           } else {
             gridApi.applyTransaction({ add: [update] });
           }
+
+          // Update the last received timestamp
+          if (update.timestamp) {
+            lastReceivedTimestamp = new Date(update.timestamp).getTime();
+          }
         }
       };
 
-      ws.onopen = () => console.log('✅ WebSocket connected');
-      ws.onclose = () => console.log('❌ WebSocket disconnected');
+      ws.onopen = () => {
+        console.log('✅ WebSocket connected');
+        // Start updating the title periodically after connection is open
+        titleUpdateInterval = setInterval(updatePageTitle, 1000); // Update every second
+      };
+
+      ws.onclose = () => {
+        console.log('❌ WebSocket disconnected');
+        // Clear the interval when disconnected
+        if (titleUpdateInterval) {
+          clearInterval(titleUpdateInterval);
+          titleUpdateInterval = null;
+        }
+      };
+
       ws.onerror = e => console.error('WebSocket error:', e);
     });
+
+    function formatTimestampAgo(params) {
+      const timestamp = new Date(params.value).getTime(); // Get timestamp in milliseconds
+      const now = new Date().getTime(); // Current time in milliseconds
+      const diffSeconds = Math.floor((now - timestamp) / 1000); // Difference in seconds
+
+      if (isNaN(diffSeconds)) {
+          return params.value; // Return original if invalid date
+      } else if (diffSeconds < 5) {
+          return 'just now';
+      } else if (diffSeconds < 60) {
+          return `${diffSeconds} sec ago`;
+      } else if (diffSeconds < 3600) { // Less than an hour
+          const minutes = Math.floor(diffSeconds / 60);
+          return `${minutes} min ago`;
+      } else if (diffSeconds < 86400) { // Less than 24 hours
+          const hours = Math.floor(diffSeconds / 3600);
+          return `${hours} hr ago`;
+      } else {
+          // For older timestamps, you might want to show the full date
+          const date = new Date(params.value);
+          return date.toLocaleDateString('en-GB'); // e.g., 03/06/2025
+      }
+    }
+
+    function updatePageTitle() {
+        const baseTitle = "Margin Book";
+        if (lastReceivedTimestamp) {
+            const date = new Date(lastReceivedTimestamp);
+            const timeString = date.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.title = `${baseTitle} - Last Update: ${timeString}`;
+        } else {
+            document.title = baseTitle; // Fallback if no message received yet
+        }
+    }
   </script>
 </body>
 </html>

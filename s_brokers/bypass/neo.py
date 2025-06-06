@@ -10,8 +10,7 @@ class Neo(Broker):
         self.base_url = 'https://mis.kotaksecurities.com/quick/user/'
         self.alt_url = 'https://neo.kotaksecurities.com/api/portfolio/v2/'  #method = get, for holdings
         self.rd = ReshapeData(broker=f'{self.name}:{self.userid}', ticks=self.ticks, )
-        self.saved_data = {}
-
+        self.saved_data = {'max_margin_used': 0}
 
     async def holdings(self):
         # need alt_url
@@ -34,13 +33,18 @@ class Neo(Broker):
             available = float(limits.get('Net', 0.1))
             self.saved_data['max_margin_used'] = max(self.saved_data.get('max_margin_used', 0.0), used)
 
-            return self.rd.margin_book({
+            margin_book = self.rd.margin_book({
                 'used': used,
                 'max_used': self.saved_data['max_margin_used'],
                 'available': available,
                 'total': used + available,
                 'cash': float(limits.get('CollateralValue', 0.1))
             })
+            self.saved_data.update({
+                'max_margin_used': max(self.saved_data.get('max_margin_used', 0.0), used),
+                'margin_used': margin_book['Used'],
+            })
+            return margin_book
 
     async def order_book(self):
         ob = []
@@ -62,5 +66,6 @@ class Neo(Broker):
             df[list(columns)[2:]] = df[list(columns)[2:]].apply(pd.to_numeric)
             df.rename(columns=columns, inplace=True)
             df.replace({"exch": exch_map}, inplace=True)
-            return self.rd.position_book(df)
-
+            position_book = self.rd.position_book(df)
+            position_book["Margin_Used"] = self.saved_data.get('margin_used')
+            return position_book

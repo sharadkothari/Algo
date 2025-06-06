@@ -1,0 +1,70 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+#myGrid {
+  height: 400px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Alternate row shading for ag-theme-alpine */
+.ag-theme-alpine .ag-row-odd {
+  background-color: #f9f9f9;
+}
+
+.ag-theme-alpine .ag-row-even {
+  background-color: #ffffff;
+}
+
+.ag-theme-alpine .ag-header-cell {
+    font-size: 18px;
+    font-weight: bold;
+    background-color: #e0e7ff; /* Light blue header */
+    color: #374151; /* Darker text for header */
+}
+.ag-theme-alpine .ag-cell {
+    font-size: 16px; /* Slightly smaller cell font */
+    padding: 8px; /* Add some padding to cells */
+}
+
+/* Custom classes for MTM column */
+.ag-cell-positive {
+    color: green;
+    font-weight: bold;
+}
+
+.ag-cell-negative {
+    color: red;
+    font-weight: bold;
+}
+
+
+/* Basic Tailwind-like classes for overall layout */
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f3f4f6; /* Light gray background */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.grid-wrapper {
+    width: 100%;
+    max-width: 1200px; /* Max width for the grid */
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+    padding: 20px;
+}
+
+.ag-theme-alpine .ag-footer-cell {
+  font-weight: bold;
+  background-color: #e0e7ff; /* Matches header background */
+  color: #374151; /* Matches header text color */
+
+}

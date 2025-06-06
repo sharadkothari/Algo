@@ -9,7 +9,7 @@ import json
 from kite import Kite
 from shoonya import Shoonya
 from neo import Neo
-from common.config import get_broker_ids
+from common.config import get_broker_ids, url_ws
 import re
 from common.expiry import Expiry
 import logging
@@ -26,7 +26,7 @@ class DataPoller:
     def __init__(self):
         self.brokers = []
         self.ticks = {}
-        self.trading_hours = TradingHours()
+        self.trading_hours = TradingHours(start_buffer=300)
         self.redis = None
         self.ws_task = None
         self.test_outside_hours = False
@@ -46,14 +46,15 @@ class DataPoller:
         return brokers
 
     async def start(self):
-        self.redis = await get_redis_client_async()
-        self.brokers = await self.get_brokers()
 
         while True:
 
             if not (self.trading_hours.is_open() or self.test_outside_hours):
                 await self.wait_until_market_opens()
                 continue
+
+            self.redis = await get_redis_client_async()
+            self.brokers = await self.get_brokers()
 
             logger.info("📈✅ Market open — starting data polling and WebSocket tick receiver.")
             self.ws_task = asyncio.create_task(self.receive_market_ticks())
@@ -65,6 +66,7 @@ class DataPoller:
 
             for label in self.BOOK_LABELS:
                 await self.redis.delete(label)
+                await self.redis.delete(f"{label}_stream")
 
             try:
                 while self.trading_hours.is_open() or self.test_outside_hours:
@@ -80,6 +82,7 @@ class DataPoller:
 
                 for broker in self.brokers:
                     await broker.stop_token_validation()
+
 
     async def poll_brokers(self):
         write_ops = []
@@ -139,16 +142,16 @@ class DataPoller:
             return serialized
 
     async def wait_until_market_opens(self):
-        wait_minutes = 5
-        next_open = datetime.datetime.now() + self.trading_hours.time_until_next_open()
-
-        logger.info(f"📉⛔ Market closed. Sleeping in short bursts until {next_open:%d-%b-%Y %H:%M}")
+        logger.info(f"📉⛔ Market closed. Sleeping in short bursts until "
+                    f"{(datetime.datetime.now() + self.trading_hours.time_until_next_open()):%d-%b-%Y %H:%M}")
 
         while not self.trading_hours.is_open():
-            await asyncio.sleep(wait_minutes * 60)
+            remaining = self.trading_hours.time_until_next_open().total_seconds()
+            sleep_duration = min(5 * 60, max(remaining, 0))
+            await asyncio.sleep(sleep_duration)
 
     async def receive_market_ticks(self):
-        uri = "ws://e7270:5009/ws/"  # WebSocket URL for quotes
+        uri = url_ws  # WebSocket URL for quotes
         while True:
             try:
                 async with websockets.connect(uri) as websocket:

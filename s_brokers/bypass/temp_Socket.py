@@ -2,9 +2,12 @@ import asyncio
 import websockets
 import json # Ticks are often sent as JSON
 import datetime # For timestamping or time-based processing
+from common.config import url_ws
 
 async def receive_market_ticks():
-    uri = "ws://e7270:5009/ws/" # Your WebSocket URL for quotes
+    # "ws://100.123.122.115:5009/ws/"
+    #
+    uri = url_ws # Your WebSocket URL for quotes
     ticks = {}
 
     while True: # Loop indefinitely to maintain connection and auto-reconnect

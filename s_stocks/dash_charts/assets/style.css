@@ -16,8 +16,7 @@
     right: 5px !important;
     left: auto !important;
     bottom: 5px !important;
-    height: 30px !important; /* Adjust height as needed */
-
+    height: 20px !important; /* Adjust height as needed */
 }
 
 .CalendarDay__today {

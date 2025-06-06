@@ -46,7 +46,9 @@ class Broker:
                 kwargs = {'data': data}
 
             case 'neo':
-                authorization, sid = self.token.split("::")
+                authorization = sid = None
+                if self.token is not None:
+                    authorization, sid = self.token.split("::")
                 method = "post"
                 headers = {'authorization': authorization, 'sid': sid}
                 data = {'jData': json.dumps({"seg": "ALL", "exch": "ALL", "prod": "ALL"})}
@@ -57,7 +59,8 @@ class Broker:
         if not (self._token_valid or validation_call):
             logger.debug(f"{self.userid} | Token invalid, skipping request to {path}")
             return None
-        timeout = aiohttp.ClientTimeout(total=5)
+        timeout_seconds = 20 if not validation_call else 30
+        timeout = aiohttp.ClientTimeout(total=timeout_seconds)
         headers, method, kwargs = self.get_headers(params=params, prd_key=prd_key)
         async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
             try:
@@ -98,13 +101,17 @@ class Broker:
         return await self.limits(validation_call=True) is not None
 
     def start_token_validation(self):
-        if self._validate_task is None or self._validate_task.done():
-            self._validate_task = asyncio.create_task(self.validate_token())
+        if self._validate_task and not self._validate_task.done():
+            return
+        self._stop_event = asyncio.Event()  # Reset stop event
+        self._validate_task = asyncio.create_task(self.validate_token())
 
     async def stop_token_validation(self):
         self._stop_event.set()
         if self._validate_task:
             await self._validate_task
+        self._validate_task = None  # Clean slate
+        self._token_valid = False  # Force revalidation on next start
 
     async def limits(self, validation_call=False):
         ...  # for validation purpose. define in respective class.

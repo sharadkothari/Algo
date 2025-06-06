@@ -20,9 +20,11 @@ bhavcopy_dir = base_dir_prv / 'bhavcopy'
 if Path('/.dockerenv').exists():
     parquet_dir = Path("/app/parquet")  # Docker path
     url_docker_db = "http://nginx/api/docker_db"
+    url_ws = "ws://nginx/ws/"
 else:
     parquet_dir = base_dir_prv / 'screener/parquet'
     url_docker_db = f"{server_url}/api/docker_db"
+    url_ws = f"{server_url.replace("http", "ws")}:5009/ws/"
 
 
 def get_redis_client():

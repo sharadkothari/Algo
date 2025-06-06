@@ -15,7 +15,7 @@ class Kite(Broker):
         super().__init__(userid, token, ticks)
         self.name = 'kite'
         self.base_url = 'https://kite.zerodha.com/oms/'
-        self.saved_data = {}
+        self.saved_data = {'max_margin_used': 0}
         self.rd = ReshapeData(broker=f'{self.name}:{self.userid}', ticks=self.ticks, )
 
     async def holdings(self):
@@ -48,9 +48,8 @@ class Kite(Broker):
             used = margins['equity']['utilised']['debits']
             cash = margins['equity']['available']['cash'] + margins['equity']['available']['intraday_payin']
             total = available + used
-            self.saved_data['max_margin_used'] = max(self.saved_data.get('max_margin_used', 0.0), used)
 
-            return self.rd.margin_book(
+            margin_book = self.rd.margin_book(
                 {
                     'used': used,
                     'max_used': self.saved_data['max_margin_used'],
@@ -58,6 +57,11 @@ class Kite(Broker):
                     'total': total,
                     'cash': cash
                 })
+            self.saved_data.update({
+                'max_margin_used': max(self.saved_data.get('max_margin_used', 0.0), used),
+                'margin_used': margin_book['Used'],
+            })
+            return margin_book
 
     async def position_book(self):
         columns = {'tradingsymbol': 'symbol', 'exchange': 'exch',
@@ -68,7 +72,9 @@ class Kite(Broker):
             df = pd.DataFrame(positions['data'].get('net', {}), columns=list(columns))
             df[list(columns)[2:]] = df[list(columns)[2:]].apply(pd.to_numeric)
             df.rename(columns=columns, inplace=True)
-            return self.rd.position_book(df)
+            position_book = self.rd.position_book(df)
+            position_book["Margin_Used"] = self.saved_data.get('margin_used')
+            return position_book
 
     async def portfolio(self):
         eq_holdings = await self.holdings()

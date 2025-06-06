@@ -11,3 +11,15 @@ services:
       - ../common:/app/common
     depends_on:
       - monorepo_base
+
+  brokers_bypass:
+    build: ./bypass
+    container_name: brokers_bypass
+    restart: always
+    networks: [ default ]
+    volumes:
+      - ./bypass:/app
+      - ../common:/app/common
+    depends_on:
+      - monorepo_base
+

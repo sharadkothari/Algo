@@ -12,7 +12,7 @@ class Shoonya(Broker):
         super().__init__(userid, token, ticks)
         self.name = 'shoonya'
         self.base_url = 'https://trade.shoonya.com/NorenWClientWeb/'
-        self.saved_data = {}
+        self.saved_data = {'max_margin_used': 0}
         self.rd = ReshapeData(broker=f'{self.name}:{self.userid}', ticks=self.ticks, )
 
     async def holdings(self):
@@ -39,15 +39,19 @@ class Shoonya(Broker):
             collateral = float(limits.get('collateral', 0.1))
             cash = float(limits.get('cash', 0.2)) + float(limits.get('payin', 0))
             total = collateral + cash
-            available = total - used
 
-            return self.rd.margin_book({
+            margin_book = self.rd.margin_book({
                 'used': used,
                 'max_used': self.saved_data['max_margin_used'],
-                'available': available,
+                'available': total - used,
                 'total': total,
                 'cash': cash
             })
+            self.saved_data.update({
+                'max_margin_used': max(self.saved_data.get('max_margin_used', 0.0), used),
+                'margin_used': margin_book['Used'],
+            })
+            return margin_book
 
     async def position_book(self):
         columns = {'tsym': 'symbol', 'exch': 'exch',
@@ -63,7 +67,9 @@ class Shoonya(Broker):
             df = pd.DataFrame(positions, columns=list(columns))
             df[list(columns)[2:]] = df[list(columns)[2:]].apply(pd.to_numeric)
             df.rename(columns=columns, inplace=True)
-            return self.rd.position_book(df)
+            position_book = self.rd.position_book(df)
+            position_book["Margin_Used"] = self.saved_data.get('margin_used')
+            return position_book
 
     async def order_book_eq(self):
         columns = {
