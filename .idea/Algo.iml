@@ -19,6 +19,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="ag-grid-community" level="application" />
     <orderEntry type="library" name="jquery-sparklines" level="application" />
+    <orderEntry type="library" name="plotly-latest" level="application" />
+    <orderEntry type="library" name="plotly-2.32.0" level="application" />
   </component>
   <component name="TemplatesService">
     <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />

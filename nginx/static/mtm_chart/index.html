@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MTM Chart</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: sans-serif;
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack children vertically */
+        }
+
+        #controls {
+            padding: 10px;
+            background-color: #f0f0f0;
+            flex-shrink: 0; /* Prevent controls from shrinking */
+        }
+
+        #chart {
+            width: 100%;
+            flex-grow: 1; /* Allow chart to grow and take remaining space */
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label for="broker-select">Select Broker:</label>
+        <select id="broker-select"></select>
+    </div>
+
+    <div id="chart"></div>
+
+    <script>
+        const apiBase = "http://e7270/api/bpd";
+        let selectedBroker = null;
+
+        async function loadBrokersAndPlot() {
+            try {
+                const res = await fetch(`${apiBase}/brokers`);
+                const brokers = await res.json();
+                const dropdown = document.getElementById("broker-select");
+
+                // If selectedBroker is not in brokers anymore, default to first
+                if (!selectedBroker || !brokers.includes(selectedBroker)) {
+                    selectedBroker = brokers[0] || null;
+                }
+
+                // Clear and repopulate dropdown
+                dropdown.innerHTML = "";
+                brokers.forEach(broker => {
+                    const option = document.createElement("option");
+                    option.value = broker;
+                    option.textContent = broker;
+                    if (broker === selectedBroker) {
+                        option.selected = true;
+                    }
+                    dropdown.appendChild(option);
+                });
+
+                if (selectedBroker) {
+                    await fetchAndPlot(selectedBroker);
+                }
+            } catch (error) {
+                console.error("Error in loadBrokersAndPlot:", error);
+            }
+        }
+
+        async function fetchAndPlot(broker) {
+            try {
+                const response = await fetch(`${apiBase}/mtm-data?broker=${encodeURIComponent(broker)}`);
+                const data = await response.json();
+
+                const x = data.map(d => d.timestamp);
+                const y = data.map(d => d.MTM);
+
+                const lastX = x[x.length - 1];
+                const lastY = y[y.length - 1];
+
+                const layout = {
+                    title: `${broker}`,
+                    xaxis: { title: 'Timestamp' },
+                    yaxis: { title: 'MTM' },
+                    autosize: true,
+                    margin: { l: 50, r: 50, b: 50, t: 30, pad: 4 },
+                    annotations: [{
+                        x: lastX,
+                        y: lastY,
+                        xref: 'x',
+                        yref: 'y',
+                        text: `${lastY}`,
+                        showarrow: true,
+                        arrowhead: 7,
+                        ax: 40,
+                        ay: 0,
+                        font: { color: 'blue', size: 12 },
+                        bgcolor: 'white',
+                    }]
+                };
+
+                Plotly.newPlot("chart", [{
+                    x: x,
+                    y: y,
+                    type: 'scatter',
+                    mode: 'lines',
+                    marker: { color: 'blue' }
+                }], layout, { responsive: true });
+            } catch (error) {
+                console.error("Error fetching MTM data:", error);
+            }
+        }
+
+        document.getElementById("broker-select").addEventListener("change", (e) => {
+            selectedBroker = e.target.value;
+            fetchAndPlot(selectedBroker);
+        });
+
+        window.addEventListener("resize", () => {
+            Plotly.relayout("chart", { autosize: true });
+        });
+
+        // Initial load
+        loadBrokersAndPlot();
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            loadBrokersAndPlot();
+        }, 10000);
+    </script>
+
+
+</body>
+</html>

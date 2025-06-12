@@ -1,6 +1,5 @@
 import asyncio
 import json
-import time
 from collections import defaultdict
 from common.config import get_redis_client_async
 from datetime import datetime
@@ -14,15 +13,16 @@ logger.setLevel(logging.INFO)
 
 
 class PositionBookStreamer:
-    def __init__(self, redis_url="redis://localhost"):
+    def __init__(self):
         self.redis = None
-        self.redis_url = redis_url
 
         self.last_written_ts_per_broker = defaultdict(lambda: 0)
         self.latest_data_per_broker = {}
 
         self.last_written_ts_consolidated = 0
         self.stream_gap = 30
+
+        self.current_day = None
 
     async def start(self):
         logger.info("Starting position book streamer")
@@ -46,6 +46,18 @@ class PositionBookStreamer:
 
         if broker_key is None or timestamp is None:
             return
+
+        msg_day = datetime.fromtimestamp(timestamp).date()
+
+        # Reset on new day
+        if self.current_day is None:
+            self.current_day = msg_day
+        elif msg_day != self.current_day:
+            logger.info(f"[Day Change Detected] Resetting state for new day: {msg_day}")
+            self.latest_data_per_broker = {}
+            self.last_written_ts_per_broker = defaultdict(lambda: 0)
+            self.last_written_ts_consolidated = 0
+            self.current_day = msg_day
 
         self.latest_data_per_broker[broker_key] = data
 

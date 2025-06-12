@@ -7,6 +7,7 @@ from test.test import router as test_router
 from docker_db.docker_db import router as docker_db_router
 from health.health import router as health_router
 from telegram.telegram import router as telegram_router, on_startup as telegram_startup
+from bypass_data.bypass_data import router as bypass_data_router
 from common.my_logger import logger
 import asyncio
 
@@ -66,3 +67,4 @@ app.include_router(test_router)
 app.include_router(docker_db_router)
 app.include_router(health_router)
 app.include_router(telegram_router)
+app.include_router(bypass_data_router)
