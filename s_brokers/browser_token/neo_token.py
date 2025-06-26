@@ -51,7 +51,7 @@ async def extract_token(playwright, client, profile):
         logger.warning(f"{client} | ❌ error extracting token: {e}")
     finally:
         shutil.rmtree(temp_folder, ignore_errors=True)
-    return client, token['auth']
+    return client, token.get('auth')
 
 
 def store_token(client, token):

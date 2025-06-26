@@ -33,6 +33,7 @@ def get_temp_folder(profile):
     source_profile_path = os.path.join(user_data_dir, profile)
     temp_user_data_folder = tempfile.mkdtemp(prefix="edge_temp_profile_")
     temp_profile_path = os.path.join(temp_user_data_folder, profile)
+    shutil.copytree(source_profile_path, temp_profile_path)
     shutil.copytree(source_profile_path, temp_profile_path, dirs_exist_ok=True)
     return temp_user_data_folder
 
@@ -57,17 +58,19 @@ def extract_token(temp_folder, profile):
     try:
         with sync_playwright() as p:
             browser = get_browser(p, temp_folder, profile)
-            page = browser.new_page()
+            #page = browser.new_page()
 
-            page.route("**/*", handle_request)
-            page.goto("https://ntrade.kotaksecurities.com/")
-            page.wait_for_load_state("networkidle", timeout=10000)
+            #page.route("**/*", handle_request)
+            #page.goto("https://ntrade.kotaksecurities.com/")
+            #page.wait_for_load_state("networkidle", timeout=10000)
 
             browser.close()
+    except Exception as e:
+        logger.error(f"{e}")
     finally:
         shutil.rmtree(temp_folder, ignore_errors=True)
         return token
 
 
 if __name__ == '__main__':
-    get_token()
+    get_token(["ylcgn"])
