@@ -107,7 +107,7 @@
         let gridOptions = {
             columnDefs: [
                 { field: "symbol", headerName: "Symbol", editable: false, rowDrag: true },
-                { field: "timestamp", headerName: "Current Time", editable: false },
+                { field: "timestamp", headerName: "Current Time", editable: false, cellDataType: "text", valueFormatter: params => params.value || '' },
                 { field: "last_price", headerName: "Current Price", editable: false },
                 { field: "operator", headerName: "Operator", editable: true, cellEditor: 'agSelectCellEditor', singleClickEdit: true,
                           cellEditorParams: { values: ['<', '=', '>'] },

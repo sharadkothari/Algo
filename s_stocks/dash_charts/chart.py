@@ -110,8 +110,8 @@ class Chart:
 
     def plot(self):
 
-        #if self.data_loader.live and dt.datetime.now().time() < self.data_loader.th.start:
-        #    return self.empty_fig()
+        if self.data_loader.live and dt.datetime.now().time() < self.data_loader.th.start:
+            return self.empty_fig()
 
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
