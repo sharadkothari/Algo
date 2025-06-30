@@ -17,3 +17,29 @@ ___
 docker update --restart=always redis-stack
 docker exec -it redis-stack redis-cli CONFIG SET notify-keyspace-events Khg
 docker exec -it redis-stack redis-cli CONFIG SET appendonly no
+
+----
+new scheme:
+
+1. cleanup old images
+docker compose down --volumes
+docker system prune -af
+
+2. Then:
+
+docker compose build monorepo_base
+docker compose up -d
+
+A. If requirements.txt is unchanged (just adding a new service)
+docker compose up -d <new_service_name>
+
+B. If requirements.txt is changed (but only impacts the new service)
+docker compose build monorepo_base
+docker compose up -d <new_service_name>
+
+C. If a new library is added for an existing service (edit to requirements.txt)
+docker compose build monorepo_base
+docker compose up -d <affected_service_name>
+or to restart all:
+docker compose up -d
+

@@ -2,34 +2,34 @@
 services:
 
   stocks_ticks:
-    build: ./ticks
+    image: monorepo_base
     container_name: stocks_ticks
     restart: always
     networks: [default]
     volumes:
       - ./ticks:/app
       - ../common:/app/common
-    depends_on:
-      - monorepo_base
+    command: ["python", "ticks.py"]
+
   
   stocks_candles:
-    build: ./candles
+    image: monorepo_base
     container_name: stocks_candles
     restart: always
     networks: [default]
     volumes:
       - ./candles:/app
       - ../common:/app/common
-    depends_on:
-      - monorepo_base
+    command: ["python","candles.py"]
+
 
   stocks_dynamic_candles:
-    build: ./dynamic_candles
+    image: monorepo_base
     container_name: stocks_dynamic_candles
     restart: always
     networks: [default]
     volumes:
       - ./dynamic_candles:/app
       - ../common:/app/common
-    depends_on:
-      - monorepo_base
+    command: ["python", "dynamic_candles.py"]
+

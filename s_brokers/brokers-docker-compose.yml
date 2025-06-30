@@ -2,24 +2,22 @@
 services:
 
   brokers_api_tokens:
-    build: ./api_tokens
+    image: monorepo_base
     container_name: brokers_api_tokens
     restart: always
     networks: [default]
     volumes:
       - ./api_tokens:/app
       - ../common:/app/common
-    depends_on:
-      - monorepo_base
+    command: ["python", "api_token.py"]
 
   brokers_bypass:
-    build: ./bypass
+    image: monorepo_base
     container_name: brokers_bypass
     restart: always
     networks: [ default ]
     volumes:
       - ./bypass:/app
       - ../common:/app/common
-    depends_on:
-      - monorepo_base
+    command: ["python", "bypass.py"]
 

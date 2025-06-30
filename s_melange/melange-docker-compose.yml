@@ -3,7 +3,7 @@ services:
 
 
   melange_alerts:
-    build: ./alerts
+    image: monorepo_base
     container_name: melange_alerts
     restart: always
     ports: ["5006:5006"]
@@ -14,22 +14,21 @@ services:
       - ../gunicorn_config.py:/app/gunicorn_config.py
     environment:
       - GUNICORN_BIND=0.0.0.0:5006
-    depends_on:
-      - monorepo_base
+    command: ["gunicorn", "-c", "gunicorn_config.py", "alerts:app"]
+
 
   melange_service_status:
-    build: ./service_status
+    image: monorepo_base
     container_name: melange_service_status
     restart: always
     networks: [default]
     volumes:
       - ./service_status:/app
       - ../common:/app/common
-    depends_on:
-      - monorepo_base
+    command: ["python", "service_status.py"]
 
   melange_api_gateway:
-    build: ./api_gateway
+    image: monorepo_base
     container_name: melange_api_gateway
     restart: always
     ports: [ "5009:5009" ]
@@ -38,5 +37,16 @@ services:
       - ./api_gateway:/app
       - ../common:/app/common
       - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - monorepo_base
+    command: ["python", "start.py"]
+
+  melange_plex_scheduler:
+    image: monorepo_base
+    container_name: melange_plex_scheduler
+    restart: always
+    networks: [ default ]
+    volumes:
+      - ./plex_scheduler:/app
+      - ../common:/app/common
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+    command: [ "python", "plex_scheduler.py" ]

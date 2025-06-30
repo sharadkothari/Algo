@@ -43,13 +43,15 @@ class KiteSocket(BaseService):
         self.kite = KiteConnect(self.api_key)
         self.last_tick_time = time.time()
         self.ticks = {}
-        self.tick_dq = deque(deque(maxlen=5000)) # old ticks auto-evicted
+        self.tick_dq = deque(deque(maxlen=5000))  # old ticks auto-evicted
         self.is_running = False
         self.date_str = None
+        self.new_tick_event = threading.Event()
         self.start()
 
     def start(self):
         threading.Thread(target=self.monitor, daemon=True).start()
+        threading.Thread(target=self.dump_ticks_to_redis, daemon=True).start()
 
     def get_access_token(self):
         return self.redis.get(f'access_token:{self.client_id}')
@@ -76,6 +78,7 @@ class KiteSocket(BaseService):
             self.last_tick_time = time.time()
             cur_tick = {self.inst_symbol_dict.get(tick["instrument_token"], "NA"): tick for tick in ticks}
             self.tick_dq.append(cur_tick)
+            self.new_tick_event.set()
             # self.ticks |= cur_tick
 
         def on_close(ws, code, reason):
@@ -114,6 +117,32 @@ class KiteSocket(BaseService):
         # threading.Thread(target=self.kws.connect, kwargs={"threaded": True}, daemon=True).start()
         self.kws.connect(threaded=True)
 
+    def dump_ticks_to_redis(self):
+        while True:
+            # Wait until tick_dq is populated
+            self.new_tick_event.wait(timeout=1)
+            self.new_tick_event.clear()
+
+            if not self.tick_dq:
+                continue
+
+            try:
+                hash_key = f'tick:{self.date_str}'
+                list_key = 'ticks'
+                with self.redis.pipeline() as pipe:
+                    for _ in range(min(100, len(self.tick_dq))):
+                        tick = self.tick_dq.popleft()
+                        tick_json = json.dumps(tick, default=str)
+                        pipe.publish("tick_channel", tick_json)
+                        pipe.lpush(list_key, tick_json)
+                        for key, value in tick.items():
+                            pipe.hset(hash_key, key, json.dumps(value, default=str))
+                    pipe.expire(hash_key, 24 * 60 * 60)
+                    pipe.expire(list_key, 24 * 60 * 60)
+                    pipe.execute()
+            except redis.RedisError as e:
+                logger.error(f"Redis pipeline error: {e}")
+
     def monitor(self):
 
         def suspend_ticker():
@@ -134,27 +163,6 @@ class KiteSocket(BaseService):
                     self.is_running = True
                     self.date_str = datetime.datetime.now().strftime('%Y%m%d')
 
-        def update_redis():
-            try:
-                hash_key = f'tick:{self.date_str}'
-                list_key = 'ticks'
-                tick_json = None
-
-                while self.tick_dq:
-                    with self.redis.pipeline() as pipe:
-                        for _ in range(min(100, len(self.tick_dq))):
-                            tick = self.tick_dq.popleft()
-                            tick_json = json.dumps(tick, default=lambda x: x.isoformat())
-                            pipe.publish("tick_channel", tick_json)
-                            pipe.lpush(list_key, tick_json)
-                            for key, value in tick.items():
-                                pipe.hset(hash_key, key, json.dumps(value, default=lambda x: x.isoformat()))
-                        pipe.expire(hash_key, 24 * 60 * 60)
-                        pipe.expire(list_key, 24 * 60 * 60)
-                        pipe.execute()
-            except redis.RedisError as e:
-                logger.error(f"Redis pipeline execution failed: {e}")
-
         def heartbeat_check():
             if self.is_running and time.time() - self.last_tick_time > 10:
                 logger.warning("No ticks for 10s — assuming dead WebSocket.")
@@ -162,7 +170,7 @@ class KiteSocket(BaseService):
 
         while True:
             suspend_ticker()
-            update_redis()
+            # update_redis()
             start_ticker()
             # heartbeat_check()
             # time.sleep(0.1)

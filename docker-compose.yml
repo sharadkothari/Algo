@@ -15,7 +15,7 @@ services:
     image: nginx:latest
     container_name: nginx
     ports: ["80:80"]
-    extra_hosts: ["e7270:100.123.122.115"]
+    extra_hosts: ["t5810:100.86.138.85"]
     restart: always
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
@@ -28,6 +28,7 @@ services:
 
 networks:
   default:
+    external: true
     name: algo
 
 include:
