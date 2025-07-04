@@ -35,102 +35,120 @@
 
     <div id="chart"></div>
 
-    <script>
-        const apiBase = "http://t5810/api/bpd";
-        let selectedBroker = null;
+<script>
 
-        async function loadBrokersAndPlot() {
-            try {
-                const res = await fetch(`${apiBase}/brokers`);
-                const brokers = await res.json();
-                const dropdown = document.getElementById("broker-select");
+    const apiBase = "/api/bpd";
+    let selectedBroker = null;
+    const lastIds = {}; // Track last_id per broker
 
-                // If selectedBroker is not in brokers anymore, default to first
-                if (!selectedBroker || !brokers.includes(selectedBroker)) {
-                    selectedBroker = brokers[0] || null;
-                }
+    async function loadBrokersAndPlot() {
+        try {
+            const res = await fetch(`${apiBase}/brokers`);
+            const brokers = await res.json();
+            const dropdown = document.getElementById("broker-select");
 
-                // Clear and repopulate dropdown
-                dropdown.innerHTML = "";
-                brokers.forEach(broker => {
-                    const option = document.createElement("option");
-                    option.value = broker;
-                    option.textContent = broker;
-                    if (broker === selectedBroker) {
-                        option.selected = true;
-                    }
-                    dropdown.appendChild(option);
-                });
-
-                if (selectedBroker) {
-                    await fetchAndPlot(selectedBroker);
-                }
-            } catch (error) {
-                console.error("Error in loadBrokersAndPlot:", error);
+            if (!selectedBroker || !brokers.includes(selectedBroker)) {
+                selectedBroker = brokers[0] || null;
             }
+
+            dropdown.innerHTML = "";
+            brokers.forEach(broker => {
+                const option = document.createElement("option");
+                option.value = broker;
+                option.textContent = broker;
+                if (broker === selectedBroker) {
+                    option.selected = true;
+                }
+                dropdown.appendChild(option);
+            });
+
+            if (selectedBroker) {
+                await fetchAndPlot(selectedBroker);
+            }
+        } catch (error) {
+            console.error("Error in loadBrokersAndPlot:", error);
+        }
+    }
+
+    const chartData = {}; // Keep chart data per broker
+
+    async function fetchAndPlot(broker) {
+        try {
+            const lastId = lastIds[broker] || '0';
+            const response = await fetch(`${apiBase}/mtm-data?broker=${encodeURIComponent(broker)}&last_id=${lastId}`);
+            const result = await response.json();
+
+            const newPoints = result.data || [];
+            if (!chartData[broker]) {
+                chartData[broker] = [];
+            }
+
+            chartData[broker].push(...newPoints); // Append new data
+            lastIds[broker] = result.last_id || lastId; // Update last_id
+
+            const x = chartData[broker].map(d => d.timestamp);
+            const y = chartData[broker].map(d => d.MTM);
+
+            const lastX = x[x.length - 1];
+            const lastY = y[y.length - 1];
+
+            const layout = {
+                title: `${broker}`,
+                xaxis: { title: 'Timestamp' },
+                yaxis: { title: 'MTM' },
+                autosize: true,
+                margin: { l: 50, r: 50, b: 50, t: 30, pad: 4 },
+                annotations: lastX && lastY ? [{
+                    x: lastX,
+                    y: lastY,
+                    xref: 'x',
+                    yref: 'y',
+                    text: `${lastY}`,
+                    showarrow: true,
+                    arrowhead: 7,
+                    ax: 40,
+                    ay: 0,
+                    font: { color: 'blue', size: 12 },
+                    bgcolor: 'white',
+                }] : []
+            };
+
+            Plotly.newPlot("chart", [{
+                x: x,
+                y: y,
+                type: 'scatter',
+                mode: 'lines',
+                marker: { color: 'blue' }
+            }], layout, { responsive: true });
+        } catch (error) {
+            console.error("Error fetching MTM data:", error);
+        }
+    }
+
+    document.getElementById("broker-select").addEventListener("change", (e) => {
+        selectedBroker = e.target.value;
+
+        // Reset chart if changing broker
+        if (!chartData[selectedBroker]) {
+            chartData[selectedBroker] = [];
+            lastIds[selectedBroker] = '0';
         }
 
-        async function fetchAndPlot(broker) {
-            try {
-                const response = await fetch(`${apiBase}/mtm-data?broker=${encodeURIComponent(broker)}`);
-                const data = await response.json();
+        fetchAndPlot(selectedBroker);
+    });
 
-                const x = data.map(d => d.timestamp);
-                const y = data.map(d => d.MTM);
+    window.addEventListener("resize", () => {
+        Plotly.relayout("chart", { autosize: true });
+    });
 
-                const lastX = x[x.length - 1];
-                const lastY = y[y.length - 1];
-
-                const layout = {
-                    title: `${broker}`,
-                    xaxis: { title: 'Timestamp' },
-                    yaxis: { title: 'MTM' },
-                    autosize: true,
-                    margin: { l: 50, r: 50, b: 50, t: 30, pad: 4 },
-                    annotations: [{
-                        x: lastX,
-                        y: lastY,
-                        xref: 'x',
-                        yref: 'y',
-                        text: `${lastY}`,
-                        showarrow: true,
-                        arrowhead: 7,
-                        ax: 40,
-                        ay: 0,
-                        font: { color: 'blue', size: 12 },
-                        bgcolor: 'white',
-                    }]
-                };
-
-                Plotly.newPlot("chart", [{
-                    x: x,
-                    y: y,
-                    type: 'scatter',
-                    mode: 'lines',
-                    marker: { color: 'blue' }
-                }], layout, { responsive: true });
-            } catch (error) {
-                console.error("Error fetching MTM data:", error);
-            }
-        }
-
-        document.getElementById("broker-select").addEventListener("change", (e) => {
-            selectedBroker = e.target.value;
+    loadBrokersAndPlot();
+    setInterval(() => {
+        if (selectedBroker) {
             fetchAndPlot(selectedBroker);
-        });
+        }
+    }, 5000);
+</script>
 
-        window.addEventListener("resize", () => {
-            Plotly.relayout("chart", { autosize: true });
-        });
-
-        // Initial load
-        loadBrokersAndPlot();
-
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            loadBrokersAndPlot();
-        }, 10000);
-    </script>
 
 
 </body>

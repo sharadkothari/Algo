@@ -85,12 +85,14 @@
 
     <div id="grid" class="ag-theme-alpine"></div>
     <audio id="alertSound">
-    <source src="play-alert" type="audio/mp3">
-    Your browser does not support the audio element.
+     <source id="alertSource" type="audio/mp3">
     </audio>
 
     <script>
         let exchangeData = {}; // Store exchange-symbol mapping globally
+        const BASE_URL = "/api/alerts1"
+        const API_URL = `${BASE_URL}/api`
+
 
         $(document).ready(() => {
             fetchSymbols();
@@ -155,7 +157,7 @@
 
 
         function fetchSymbols() {
-            $.get('symbols', function(data) {
+            $.get(`${API_URL}/symbols`, function(data) {
                 exchangeData = data;
                 let exchangeDropdown = $('#exchange');
                 exchangeDropdown.empty().append(new Option("Select Exchange", ""));
@@ -291,7 +293,7 @@
         }
 
         function fetchAlerts() {
-            $.get('alerts', function(alerts) {
+            $.get(`${API_URL}`, function(alerts) {
                 console.log("Fetched alerts:", alerts);
 
                 let rowData = Object.entries(alerts).map(([id, alert]) => ({id, ...alert}));
@@ -318,7 +320,7 @@
             }
 
             $.ajax({
-                url: 'alerts',
+                url: `${API_URL}`,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(alertData),
@@ -351,7 +353,7 @@
             }
             console.log("Deleting alert with ID:", id);
 
-            $.ajax({ url: `alerts/${id}`, type: 'DELETE' })
+            $.ajax({ url: `${API_URL}/${id}`, type: 'DELETE' })
                 .done(() => {
                     let rowNode = gridOptions.api.getRowNode(id);
                     if (rowNode) gridOptions.api.applyTransaction({ remove: [rowNode.data] });
@@ -371,7 +373,7 @@
 
             // Optionally, you can notify the backend (if needed)
             $.ajax({
-                url: `alerts/${id}/reset`,
+                url: `${API_URL}/${id}/reset`,
                 type: 'POST',
                 success: function() {
                     console.log("Alert reset successfully.");
@@ -391,7 +393,7 @@
             gridOptions.api.forEachNode(node => {
                 if (node.data.status !== 'Active') return;
 
-                $.get(`tick-data/${encodeURIComponent(node.data.symbol)}`, function(data) {
+                $.get(`${API_URL}/tick-data/${encodeURIComponent(node.data.symbol)}`, function(data) {
                     let formattedTime = new Date(data.exchange_timestamp).toLocaleString('en-GB', {
                         day: '2-digit', month: 'short', year: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -412,23 +414,25 @@
         }
 
         function playAlertSound(alertId) {
-            let alertSound = document.getElementById('alertSound');
+            const alertSound = document.getElementById('alertSound');
+            const alertSource = document.getElementById('alertSource');
+            alertSource.src = `${BASE_URL}/play-alert`;
+            alertSound.load();
             alertSound.play();
-
             // Stop any existing interval for this alert
             if (alertIntervals[alertId]) {
                 clearInterval(alertIntervals[alertId]);
-                }
+            }
 
             // Start a new interval for sound replay
-                alertIntervals[alertId] = setInterval(() => {
-                    alertSound.play();
-                }, 5000);
+            alertIntervals[alertId] = setInterval(() => {
+                alertSound.play();
+            }, 5000);
         }
 
         function ackAlert(id) {
             $.ajax({
-                url: `alerts/${id}/ack`,
+                url: `${API_URL}/${id}/ack`,
                 type: 'POST',
                 success: function() {
                     let rowNode = gridOptions.api.getRowNode(id);

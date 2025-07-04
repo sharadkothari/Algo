@@ -1,0 +1,12 @@
+services:
+  plex:
+    type: docker
+    container_name: plex
+    start: market_close_plus_5
+    stop: market_open_minus_5
+
+  fastapi_ticks:
+    type: systemd
+    service_name: fastapi-ticks.service
+    start: market_open_minus_5
+    stop: market_close_plus_5

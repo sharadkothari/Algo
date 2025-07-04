@@ -20,7 +20,7 @@ class PositionBookStreamer:
         self.latest_data_per_broker = {}
 
         self.last_written_ts_consolidated = 0
-        self.stream_gap = 30
+        self.stream_gap = 5
 
         self.current_day = None
 
@@ -89,7 +89,12 @@ class PositionBookStreamer:
 
     async def _write_to_stream(self, data, tag):
         stream_data = {k: str(data.get(k, "")) for k in BROKER_KEYS + ["timestamp", "Broker"]}
-        key = "position_book_stream"
+
+        if tag == "ALL":
+            key = "position_book_stream:ALL"
+        else:
+            key = f"position_book_stream:{tag}"  # tag is broker name
+
         await self.redis.xadd(key, fields=stream_data)
         logger.debug(f"[Streamed] {tag} @ {data.get('timestamp')}")
 

@@ -6,6 +6,7 @@ import platform
 
 server_url = 'http://100.86.138.85'
 redis_host = '100.86.138.85'
+#redis_host = '100.123.122.115' #e7270
 redis_port = 6379
 redis_db = 0
 redis_hash = "tick"
@@ -25,6 +26,13 @@ else:
     parquet_dir = base_dir_prv / 'screener/parquet'
     url_docker_db = f"{server_url}/api/docker_db"
     url_ws = f"{server_url.replace("http", "ws")}:5009/ws/"
+
+
+def get_redis_client_v2(asyncio=False, port_ix=0):
+    redis_lib = redis if not asyncio else redis.asyncio
+    redis_client = redis_lib.Redis(host=redis_host, port=redis_port + port_ix, db=redis_db, decode_responses=True)
+    redis_client.config_set('notify-keyspace-events', 'Khg')
+    return redis_client
 
 
 def get_redis_client():
@@ -52,4 +60,4 @@ def get_broker_ids():
 
 
 if __name__ == "__main__":
-    print(get_browser_profiles())
+    r = get_redis_client_v2(port_ix=1)

@@ -4,7 +4,7 @@ from kite_token import get_token as get_kite_token
 from shoonya_token import get_token as get_shoonya_token
 from neo_token import get_token as get_neo_token
 from common.config import get_broker_ids
-from common.config import get_redis_client
+from common.config import get_redis_client_v2
 import time
 
 
@@ -33,7 +33,7 @@ def get_ids_to_process(value):
 
 
 def token_update_worker():
-    r = get_redis_client()
+    r = get_redis_client_v2(port_ix=1)
     pubsub = r.pubsub()
     pubsub.subscribe("token_update")
 

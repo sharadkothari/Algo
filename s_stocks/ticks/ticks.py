@@ -119,6 +119,12 @@ class KiteSocket(BaseService):
 
     def dump_ticks_to_redis(self):
         while True:
+
+            if not self.trading_hour.is_open() and not self.tick_dq:
+                seconds_until_open = self.trading_hour.time_until_next_open().total_seconds()
+                time.sleep(seconds_until_open)
+                continue
+
             # Wait until tick_dq is populated
             self.new_tick_event.wait(timeout=1)
             self.new_tick_event.clear()
@@ -170,10 +176,9 @@ class KiteSocket(BaseService):
 
         while True:
             suspend_ticker()
-            # update_redis()
             start_ticker()
             # heartbeat_check()
-            # time.sleep(0.1)
+            time.sleep(1)
 
     @staticmethod
     def restart_program():

@@ -6,7 +6,7 @@ from kiteconnect import KiteConnect
 from common.utils import Encrypt
 from common.my_logger import logger
 from common.telegram_bot import TelegramBotStocks
-from common.config import data_dir, get_redis_client
+from common.config import data_dir, get_redis_client_v2
 from apscheduler.schedulers.blocking import BlockingScheduler
 import datetime as dt
 import signal
@@ -20,7 +20,7 @@ with open(data_dir / f'brokers.json', 'r') as f:
     broker_data = json.loads(f.read())
 
 # Initialize Redis
-redis_client = get_redis_client()
+redis_client = get_redis_client_v2(port_ix=1)
 tbot = TelegramBotStocks(send_only=True)
 
 # Zerodha Kite Login URLs

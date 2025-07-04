@@ -1,5 +1,5 @@
 from common.utils import TimeCalc
-from common.config import get_redis_client, get_browser_profiles
+from common.config import get_redis_client_v2, get_browser_profiles
 from common.my_logger import logger
 import os
 from common.telegram_bot import TelegramBotService as TelegramBot
@@ -14,7 +14,7 @@ class CommonToken:
         self.client_ids = client_ids
         self.get_cookie_token = get_cookie_token
         self.validate_token = validate_token
-        self.r = get_redis_client()
+        self.r = get_redis_client_v2(port_ix=1)
         tc = TimeCalc()
         self.expiry_ts = int(tc.next_6am().timestamp())
         self.browser_profiles = get_browser_profiles()

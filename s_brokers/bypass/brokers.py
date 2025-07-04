@@ -1,4 +1,4 @@
-from common.config import get_redis_client_async
+from common.config import get_redis_client_v2
 import aiohttp
 import asyncio
 from common.my_logger import logger
@@ -23,7 +23,7 @@ class Broker:
     @classmethod
     async def create(cls, userid: str, ticks=None):
         broker = cls(userid, None, ticks)
-        broker.r = await get_redis_client_async()
+        broker.r = await get_redis_client_v2(asyncio=True, port_ix=1)
         await broker.set_token()
         broker._token_valid = await broker._do_validate_token()
         return broker

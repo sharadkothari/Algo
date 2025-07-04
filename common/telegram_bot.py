@@ -1,4 +1,4 @@
-from common.config import get_redis_client, url_docker_db
+from common.config import get_redis_client_v2, url_docker_db
 import redis
 import threading
 from common.my_logger import logger
@@ -25,7 +25,8 @@ class TelegramBot:
         self.chat_id = chat_id
         self.consumer_name = consumer_name
         self.outgoing_stream = "telegram_outgoing"
-        self.redis_client = get_redis_client()
+        self.redis_client = get_redis_client_v2(port_ix=0)
+        self.redis_client_1 = get_redis_client_v2(port_ix=1)
         if not send_only:
             self.pubsub = self.redis_client.pubsub()
             self.pubsub.unsubscribe(f"{self.chat_id}")
@@ -146,7 +147,7 @@ class TelegramBotService(TelegramBot):
                 broker_id = m.group(1)
                 if broker_id.lower() in self.broker_ids:
                     self.send(f"updating token: {broker_id}")
-                    self.redis_client.publish("token_update", broker_id)
+                    self.redis_client_1.publish("token_update", broker_id)
                 else:
                     self.send(f"{broker_id} not found")
 

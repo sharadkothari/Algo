@@ -1,6 +1,6 @@
 from common.my_logger import logger
 from common.trading_hours import TradingHours
-from common.config import get_redis_client_async
+from common.config import get_redis_client_v2
 import asyncio
 import datetime
 import pandas as pd
@@ -53,7 +53,7 @@ class DataPoller:
                 await self.wait_until_market_opens()
                 continue
 
-            self.redis = await get_redis_client_async()
+            self.redis = await get_redis_client_v2(asyncio=True, port_ix=0)
             self.brokers = await self.get_brokers()
 
             logger.info("📈✅ Market open — starting data polling and WebSocket tick receiver.")
@@ -63,6 +63,8 @@ class DataPoller:
 
             for broker in self.brokers:
                 broker.start_token_validation()
+                await self.redis.delete(f"position_book_stream:{broker}")
+            await self.redis.delete("position_book_stream:ALL")
 
             for label in self.BOOK_LABELS:
                 await self.redis.delete(label)
