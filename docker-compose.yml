@@ -23,7 +23,6 @@ services:
       - ./nginx/static:/usr/share/nginx/html
 
     depends_on:
-      - melange_alerts
       - melange_api_gateway
 
 networks:

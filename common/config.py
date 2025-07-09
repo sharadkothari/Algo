@@ -31,19 +31,19 @@ else:
 def get_redis_client_v2(asyncio=False, port_ix=0):
     redis_lib = redis if not asyncio else redis.asyncio
     redis_client = redis_lib.Redis(host=redis_host, port=redis_port + port_ix, db=redis_db, decode_responses=True)
-    redis_client.config_set('notify-keyspace-events', 'Khg')
+    # redis_client.config_set('notify-keyspace-events', 'Khg')
     return redis_client
 
 
 def get_redis_client():
     redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
-    redis_client.config_set('notify-keyspace-events', 'Khg')
+    # redis_client.config_set('notify-keyspace-events', 'Khg')
     return redis_client
 
 
 async def get_redis_client_async():
     redis_client = redis.asyncio.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
-    await redis_client.config_set('notify-keyspace-events', 'Khg')
+    # await redis_client.config_set('notify-keyspace-events', 'Khg')
     return redis_client
 
 

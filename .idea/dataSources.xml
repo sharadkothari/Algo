@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="0@e7270" uuid="b0a21954-69e7-46cb-9efe-0bb75ed6be83">
+    <data-source source="LOCAL" name="0@t5810_0" uuid="0a950322-debd-415b-bc31-3664a26f4caf">
       <driver-ref>redis</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>jdbc.RedisDriver</jdbc-driver>
-      <jdbc-url>jdbc:redis://e7270:6379/0</jdbc-url>
+      <jdbc-url>jdbc:redis://t5810:6379/0</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="0@t5810_1" uuid="cfd838a5-305a-42b4-89b8-68d3f4ed3538">
+      <driver-ref>redis</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>jdbc.RedisDriver</jdbc-driver>
+      <jdbc-url>jdbc:redis://t5810:6380/0</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

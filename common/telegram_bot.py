@@ -10,14 +10,14 @@ from common.config import get_broker_ids
 class TelegramBot:
     _instances = {}  # Store single instances per chat_id
 
-    def __new__(cls, chat_id, consumer_name, send_only=False):
+    def __new__(cls, chat_id, consumer_name, send_only=True):
         """Ensure only one instance per chat_id exists."""
         if chat_id not in cls._instances:
             instance = super().__new__(cls)
             cls._instances[chat_id] = instance
         return cls._instances[chat_id]
 
-    def __init__(self, chat_id, consumer_name, send_only=False):
+    def __init__(self, chat_id, consumer_name, send_only=True):
         """Prevent re-initialization if instance already exists."""
         if hasattr(self, "initialized"):
             return  # Avoid re-initialization
@@ -35,14 +35,22 @@ class TelegramBot:
             threading.Thread(target=self.listen_messages, daemon=True).start()
 
     def listen_messages(self):
-        try:
-            for message in self.pubsub.listen():
-                if message["type"] == "message":  # Only process actual messages
-                    self.process_messages(message)
-        except Exception as e:
-            logger.info(f"Listener error for chat_id {self.chat_id}: {e}")
-        finally:
-            self.pubsub.close()
+        while True:
+            try:
+                for message in self.pubsub.listen():
+                    if message["type"] == "message":  # Only process actual messages
+                        self.process_messages(message)
+            except Exception as e:
+                logger.info(f"Listener error for chat_id {self.chat_id}: {e}")
+            finally:
+                try:
+                    self.pubsub.close()
+                    logger.warning(f"Pubsub closed for chat_id {self.chat_id}. Restarting listener...")
+                except Exception:
+                    pass
+                # Reconnect pubsub after failure
+            self.pubsub = self.redis_client.pubsub()
+            self.pubsub.subscribe(f"{self.chat_id}")
 
     def process_messages(self, message):
         ...
@@ -57,10 +65,10 @@ class TelegramBotMain(TelegramBot):
     consumer_name = "main"
     chat_id = 387589523
 
-    def __new__(cls, send_only=False):
+    def __new__(cls, send_only=True):
         return super().__new__(cls, cls.chat_id, cls.consumer_name, send_only=send_only)
 
-    def __init__(self, send_only=False):
+    def __init__(self, send_only=True):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name, send_only=send_only)
 
     def process_messages(self, message):
@@ -72,10 +80,10 @@ class TelegramBotService(TelegramBot):
     consumer_name = "service"
     chat_id = -1002340369818
 
-    def __new__(cls, send_only=False):
+    def __new__(cls, send_only=True):
         return super().__new__(cls, cls.chat_id, cls.consumer_name, send_only=send_only)
 
-    def __init__(self, send_only=False):
+    def __init__(self, send_only=True):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name, send_only=send_only)
         self.pattern = r"^/(start|stop) (\S+)"
         self.status_icon = {"running": "🟢", "exited": "🔴"}
@@ -159,10 +167,10 @@ class TelegramBotStocks(TelegramBot):
     consumer_name = "stocks"
     chat_id = -4626518827
 
-    def __new__(cls, send_only=False):
+    def __new__(cls, send_only=True):
         return super().__new__(cls, cls.chat_id, cls.consumer_name, send_only=send_only)
 
-    def __init__(self, send_only=False):
+    def __init__(self, send_only=True):
         super().__init__(chat_id=self.chat_id, consumer_name=self.consumer_name, send_only=send_only)
 
     def process_messages(self, message):

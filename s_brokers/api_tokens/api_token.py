@@ -136,8 +136,10 @@ class TokenScheduler(BaseService):
             msg = "All tokens fetched"
             logger.info(msg)
             tbot.send(msg)
-            self.scheduler.remove_job('token_retry_job')
-            self.scheduler.remove_job('finalize_token_job')
+            if self.scheduler.get_job('token_retry_job'):
+                self.scheduler.remove_job('token_retry_job')
+            if self.scheduler.get_job('finalize_token_job'):
+                self.scheduler.remove_job('finalize_token_job')
 
     def stop_retries(self):
         if self.retry_list:
@@ -161,6 +163,10 @@ class TokenScheduler(BaseService):
 
 if __name__ == "__main__":
     ts = TokenScheduler()
+    # Immediate run at startup
+    ts.retry_list = ts.client_ids.copy()
+    ts.get_access_token()
+
     ts.scheduler.start()
     # kt = KiteToken()
     # kt.set_client_id("MIM066")

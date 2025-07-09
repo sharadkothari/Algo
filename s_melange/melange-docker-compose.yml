@@ -1,22 +1,6 @@
 
 services:
 
-
-  melange_alerts:
-    image: monorepo_base
-    container_name: melange_alerts
-    restart: always
-    ports: ["5006:5006"]
-    networks: [default]
-    volumes:
-      - ./alerts:/app
-      - ../common:/app/common
-      - ../gunicorn_config.py:/app/gunicorn_config.py
-    environment:
-      - GUNICORN_BIND=0.0.0.0:5006
-    command: ["gunicorn", "-c", "gunicorn_config.py", "alerts:app"]
-
-
   melange_service_status:
     image: monorepo_base
     container_name: melange_service_status

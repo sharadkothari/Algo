@@ -13,6 +13,7 @@ from alerts.alerts_api import router as alerts_api_router
 from common.my_logger import logger
 import asyncio
 from common.base_service import BaseService
+from common.utils import get_ngrok_url
 from pathlib import Path
 
 redis_task = None
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to start Redis listener: {e}")
 
     # 2. Start any custom startup tasks
+    get_ngrok_url()
     await telegram_startup()
 
     # 3. Now start BaseService (so Telegram bot is ready to send)

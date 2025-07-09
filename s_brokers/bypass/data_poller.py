@@ -63,7 +63,7 @@ class DataPoller:
 
             for broker in self.brokers:
                 broker.start_token_validation()
-                await self.redis.delete(f"position_book_stream:{broker}")
+                await self.redis.delete(f"position_book_stream:{broker.name}:{broker.user_id}")
             await self.redis.delete("position_book_stream:ALL")
 
             for label in self.BOOK_LABELS:

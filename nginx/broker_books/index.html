@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trading Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+    }
+
+    nav {
+      background-color: #1f2937;
+      padding: 1em;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    nav a {
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 18px;
+      padding: 0.5em 1em;
+      border-radius: 8px;
+    }
+
+    nav a.active, nav a:hover {
+      background-color: #3b82f6;
+    }
+
+    .view {
+      display: none;
+      padding: 20px;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="#" id="position-tab" class="active">Position Book</a>
+    <a href="#" id="margin-tab">Margin Book</a>
+  </nav>
+
+  <div id="position-view" class="view active">
+    <iframe src="http://t5810/static/position_book/index.html"></iframe>
+  </div>
+
+  <div id="margin-view" class="view">
+    <iframe src="http://t5810/static/margin_book/index.html"></iframe>
+  </div>
+
+  <script>
+    const positionTab = document.getElementById('position-tab');
+    const marginTab = document.getElementById('margin-tab');
+    const positionView = document.getElementById('position-view');
+    const marginView = document.getElementById('margin-view');
+
+    function switchView(tab) {
+      if (tab === 'position') {
+        positionView.classList.add('active');
+        marginView.classList.remove('active');
+        positionTab.classList.add('active');
+        marginTab.classList.remove('active');
+      } else {
+        marginView.classList.add('active');
+        positionView.classList.remove('active');
+        marginTab.classList.add('active');
+        positionTab.classList.remove('active');
+      }
+    }
+
+    positionTab.addEventListener('click', e => {
+      e.preventDefault();
+      switchView('position');
+    });
+
+    marginTab.addEventListener('click', e => {
+      e.preventDefault();
+      switchView('margin');
+    });
+  </script>
+</body>
+</html>

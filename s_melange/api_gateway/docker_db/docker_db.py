@@ -36,5 +36,5 @@ async def fetch_logs(service_name: str):
 
     if "error" in result:
         raise HTTPException(status_code=result.get(1, 500), detail=result["error"])
-
-    return result["logs"]
+    if type(result) is dict:
+        return result.get("logs")

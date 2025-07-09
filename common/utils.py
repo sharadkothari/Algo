@@ -1,5 +1,4 @@
 from flask import jsonify
-from common.config import redis_host, redis_port, redis_db
 import redis
 import datetime
 import requests
@@ -7,6 +6,24 @@ import os
 import docker
 import base64
 from itertools import zip_longest
+from common.config import server_url, get_redis_client_v2
+from common.my_logger import logger
+
+redis_0 =  get_redis_client_v2(port_ix=0)
+redis_1 = get_redis_client_v2(port_ix=1)
+
+
+def get_ngrok_url():
+    try:
+        response = requests.get(f"{server_url}:4040/api/tunnels", timeout=5)
+        data = response.json()
+        tunnels = data.get("tunnels", [])
+        if tunnels:
+            if public_url := tunnels[0].get("public_url"):
+                redis_1.set("ngrok_url", public_url)
+                logger.info(f"ngrok url is {public_url}")
+    except:
+        logger.error(f"error getting / storing ngrok url")
 
 
 def list_routes(app):
@@ -21,8 +38,7 @@ def list_routes(app):
 
 
 def register_service(module_name, port):
-    redis_client = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
-    redis_client.hset("services", module_name, f"{port}")
+    redis_0.hset("services", module_name, f"{port}")
     return f"Registered {module_name} at {port}"
 
 
@@ -55,7 +71,9 @@ class TimeCalc:
             next_6am = now.replace(hour=6, minute=0, second=0, microsecond=0)
         return next_6am
 
+
 if __name__ == "__main__":
-    e = Encrypt("YLCGN")
-    print(e.encrypt("iGo1ofkqrrKkfKD7oT0aHvsP0uka"))
-    print(e.encrypt("Kotak@1"))
+    #e = Encrypt("YLCGN")
+    #print(e.encrypt("iGo1ofkqrrKkfKD7oT0aHvsP0uka"))
+    #print(e.encrypt("Kotak@1"))
+    get_ngrok_url()

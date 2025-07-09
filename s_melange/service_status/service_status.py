@@ -32,7 +32,6 @@ class ServiceStatus(BaseService):
                     if status:
                         status_emoji = "🟢" if status == "up" else "🔴"
                         message = f"{status_emoji} {key} : {status.upper()}"
-                        logger.info(message)
                         tbot_service.send(message)
         except Exception as e:
             print(f"Listener error: {e}")

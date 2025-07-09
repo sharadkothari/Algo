@@ -7,13 +7,13 @@ from ansi2html import Ansi2HTMLConverter
 
 # Connect to Redis and Docker
 redis_client = get_redis_client()
-DOCKER_BASE_URL = 'tcp://docker:2375'
-
+# DOCKER_BASE_URL = 'tcp://docker:2375'
 
 class DockerHandler:
     def __init__(self):
         try:
-            self.client = docker.from_env()
+            # self.client = docker.from_env() # for windows
+            self.client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
             logger.info('DockerHandler initialized')
         except Exception as e:
             logger.info(f"Error setting docker client: {e}")

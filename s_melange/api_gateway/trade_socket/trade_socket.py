@@ -133,7 +133,7 @@ async def send_to_client(client: ClientStream):
                     msg = task.result()
                     await client.ws.send_json(msg)
                 except Exception as e:
-                    logger.warning(f"Client send failed: {type(e).__name__} - {e}")
+                    # logger.debug(f"Client send failed: {type(e).__name__} - {e}")
                     return  # exit on failure
 
     except asyncio.CancelledError:
