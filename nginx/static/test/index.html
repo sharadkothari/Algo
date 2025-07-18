@@ -1,32 +1,186 @@
-<!-- index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Tick Viewer</title>
+  <meta charset="UTF-8" />
+  <title>Server Stats</title>
   <style>
-    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
-    pre { font-size: 1.1rem; }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f3f4f6;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    th {
+      background-color: #e0e7ff;
+      color: #374151;
+      font-size: 16px;
+    }
+
+    td {
+      font-size: 14px;
+    }
+
+    .high-usage {
+      background-color: #fee2e2;
+    }
+
+    .med-usage {
+      background-color: #fef9c3;
+    }
+
+    .low-usage {
+      background-color: #dcfce7;
+    }
+
+    .offline {
+      color: red;
+      font-weight: bold;
+    }
+
+    caption {
+      text-align: left;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h2>Live Tick Feed (WebSocket)</h2>
-  <pre id="output">Connecting...</pre>
 
-    <script>
-      const socket = new WebSocket("ws://t5810:5009/ws/");
-      const output = document.getElementById("output");
+  <table id="statsTable">
+    <caption>Server Stats (Last update: <span id="lastUpdate">loading...</span>)</caption>
+    <thead>
+      <tr>
+        <th>Host</th>
+        <th>CPU %</th>
+        <th>Memory %</th>
+        <th>Disk %</th>
+        <th>Battery</th>
+        <th>Last Seen</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Populated by JS -->
+    </tbody>
+  </table>
 
-      socket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        let str = "";
-        for (const [sym, tick] of Object.entries(data)) {
-          str += `${sym} → ₹${tick.last_price} | Vol: ${tick.volume} | 🕒 ${new Date(tick.exchange_timestamp * 1000).toLocaleTimeString()}\n`;
+  <script>
+    const endpoints = {
+      "Jupiter": "http://t5810/api/health/stats",
+      "U530": "http://u530/stats",
+      "E6330": "http://e6330/stats",
+      "E6330-2": "http://e6330-2/stats",
+      "E7270": "http://e7270:8000/stats"
+    };
+
+    const tableBody = document.querySelector("#statsTable tbody");
+    const lastUpdateSpan = document.getElementById("lastUpdate");
+    const latestTimestamps = {};
+
+    function getUsageClass(value) {
+      if (value === "N/A" || isNaN(value)) return "offline";
+      value = parseFloat(value);
+      if (value > 80) return "high-usage";
+      if (value > 50) return "med-usage";
+      return "low-usage";
+    }
+
+    function formatTimeAgo(isoString) {
+      if (!isoString) return "Never";
+      const timestamp = new Date(isoString).getTime();
+      const now = Date.now();
+      const diffSec = Math.floor((now - timestamp) / 1000);
+      if (isNaN(diffSec)) return isoString;
+      if (diffSec < 5) return "just now";
+      if (diffSec < 60) return `${diffSec} sec ago`;
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+      return new Date(isoString).toLocaleString();
+    }
+
+    function updateTable(dataMap) {
+      tableBody.innerHTML = "";
+
+      for (const hostname in dataMap) {
+        const data = dataMap[hostname];
+
+        const row = document.createElement("tr");
+
+        const tdHost = document.createElement("td");
+        tdHost.textContent = data.hostname || hostname;
+        row.appendChild(tdHost);
+
+        const tdCpu = document.createElement("td");
+        tdCpu.textContent = data.cpu;
+        tdCpu.className = getUsageClass(data.cpu);
+        row.appendChild(tdCpu);
+
+        const tdMem = document.createElement("td");
+        tdMem.textContent = data.memory;
+        tdMem.className = getUsageClass(data.memory);
+        row.appendChild(tdMem);
+
+        const tdDisk = document.createElement("td");
+        tdDisk.textContent = data.disk;
+        tdDisk.className = getUsageClass(data.disk);
+        row.appendChild(tdDisk);
+
+        const tdBattery = document.createElement("td");
+        tdBattery.textContent = data.battery || "N/A";
+        row.appendChild(tdBattery);
+
+        const tdLastSeen = document.createElement("td");
+        tdLastSeen.textContent = formatTimeAgo(data.lastSeen);
+        row.appendChild(tdLastSeen);
+
+        tableBody.appendChild(row);
+      }
+    }
+
+    async function refreshStats() {
+      const now = new Date();
+      lastUpdateSpan.textContent = now.toLocaleTimeString('en-GB');
+
+      const dataMap = {};
+
+      for (const [name, url] of Object.entries(endpoints)) {
+        try {
+          const response = await fetch(url);
+          const json = await response.json();
+          json.lastSeen = now.toISOString();
+          latestTimestamps[json.hostname || name] = json.lastSeen;
+          dataMap[name] = json;
+        } catch {
+          dataMap[name] = {
+            hostname: name,
+            cpu: "N/A",
+            memory: "N/A",
+            disk: "N/A",
+            battery: "N/A",
+            lastSeen: latestTimestamps[name] || ""
+          };
         }
-        output.textContent = str;
-      };
+      }
 
-      socket.onopen = () => output.textContent = "Connected. Waiting for ticks...";
-      socket.onerror = (err) => console.error("WebSocket error:", err);
-    </script>
-    </body>
+      updateTable(dataMap);
+    }
+
+    refreshStats();
+    setInterval(refreshStats, 5000);
+  </script>
+</body>
 </html>

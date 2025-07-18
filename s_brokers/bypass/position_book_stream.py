@@ -6,8 +6,11 @@ from datetime import datetime
 from common.my_logger import logger
 import logging
 
-BROKER_KEYS = ["PE_Qty", "CE_Qty", "Premium", "MTM", "Pos_Delta", "Margin_Used"]
-NUMERIC_KEYS = ["PE_Qty", "CE_Qty", "Premium", "MTM", "Pos_Delta"]  # for consolidation
+BROKER_KEYS = ["PE_Qty", "CE_Qty", "Premium", "MTM", "Margin_Used",
+               "Delta_Skew_%", 'Gamma_to_Delta_%', "Pos_Gamma", "Pos_Delta", "sum_call_delta", "sum_put_delta"]
+NUMERIC_KEYS = [ "PE_Qty", "CE_Qty", "Premium", "MTM", "Pos_Delta", "Pos_Gamma", "sum_call_delta", "sum_put_delta"]
+
+
 
 logger.setLevel(logging.INFO)
 
@@ -74,16 +77,40 @@ class PositionBookStreamer:
             self.last_written_ts_consolidated = timestamp
 
     def _generate_consolidated_snapshot(self):
-        snapshot = {"timestamp": datetime.now().isoformat(), "Broker": "ALL"}
+        snapshot = {"timestamp": datetime.now().isoformat(), "Broker": "ALL", 'Delta_Skew_%':0.0}
 
-        for key in NUMERIC_KEYS:
-            total = 0.0
-            for broker_data in self.latest_data_per_broker.values():
+        # Step 1: Accumulate numeric fields
+        aggregates = {key: 0.0 for key in NUMERIC_KEYS}
+        for broker_data in self.latest_data_per_broker.values():
+            for key in NUMERIC_KEYS:
                 try:
-                    total += float(broker_data.get(key, 0))
+                    aggregates[key] += float(broker_data.get(key, 0))
                 except (ValueError, TypeError):
                     pass
-            snapshot[key] = str(round(total, 4))
+
+        # Step 2: Add raw aggregates to snapshot
+        for key in NUMERIC_KEYS:
+            snapshot[key] = round(aggregates[key], 4)
+
+        # Step 3: Compute Delta Skew % and Gamma/Delta %
+        try:
+            total_delta_exp = aggregates['Pos_Delta']
+            total_gamma_exp = aggregates['Pos_Gamma']
+            call_delta = aggregates['sum_call_delta']
+            put_delta = aggregates['sum_put_delta']
+
+            if total_delta_exp != 0:
+                delta_skew_pct = abs(call_delta - put_delta) / abs(total_delta_exp) * 100
+                gamma_delta_pct = abs(total_gamma_exp / total_delta_exp) * 100
+            else:
+                delta_skew_pct = 0.0
+                gamma_delta_pct = 0.0
+
+            snapshot['Delta_Skew_%'] = round(delta_skew_pct, 2)
+            snapshot['Gamma_to_Delta_%'] = round(gamma_delta_pct, 2)
+
+        except Exception as e:
+            logger.warning(f"[Consolidated Snapshot Error] {e}")
 
         return snapshot
 

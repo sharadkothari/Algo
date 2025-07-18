@@ -29,12 +29,12 @@ class Broker:
         return broker
 
     def get_headers(self, params=None, prd_key=None):
-        headers = method = kwargs = None
         match self.name:
             case 'kite':
                 headers = {'authorization': self.token}
                 method = "get"
                 kwargs = {'params': params}
+                response_timeout = 20
 
             case 'shoonya':
                 headers = {}
@@ -44,6 +44,7 @@ class Broker:
                     data['prd'] = prd_key
                 data = f'jData={json.dumps(data)}&jKey={self.token}'
                 kwargs = {'data': data}
+                response_timeout = 20
 
             case 'neo':
                 authorization = sid = None
@@ -53,15 +54,23 @@ class Broker:
                 headers = {'authorization': authorization, 'sid': sid}
                 data = {'jData': json.dumps({"seg": "ALL", "exch": "ALL", "prod": "ALL"})}
                 kwargs = {'data': data}
-        return headers, method, kwargs
+                response_timeout = 30
+
+            case _:
+                headers = {}
+                method = "get"
+                kwargs = {}
+                response_timeout = 20
+
+        return headers, method, kwargs, response_timeout
 
     async def get_response(self, path, params=None, prd_key=None, validation_call=False):
         if not (self._token_valid or validation_call):
             logger.debug(f"{self.userid} | Token invalid, skipping request to {path}")
             return None
-        timeout_seconds = 20 if not validation_call else 30
+        headers, method, kwargs, response_timeout  = self.get_headers(params=params, prd_key=prd_key)
+        timeout_seconds = response_timeout if not validation_call else response_timeout * 1.5
         timeout = aiohttp.ClientTimeout(total=timeout_seconds)
-        headers, method, kwargs = self.get_headers(params=params, prd_key=prd_key)
         async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
             try:
                 request_fn = getattr(session, method)

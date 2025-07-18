@@ -23,14 +23,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: ["python", "start.py"]
 
-  melange_plex_scheduler:
+  melange_docker_scheduler:
     image: monorepo_base
-    container_name: melange_plex_scheduler
+    container_name: melange_docker_scheduler
     restart: always
     networks: [ default ]
     volumes:
-      - ./plex_scheduler:/app
+      - ./docker_scheduler:/app
       - ../common:/app/common
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
-    command: [ "python", "plex_scheduler.py" ]
+    command: [ "python", "docker_scheduler.py" ]

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    #myGrid {
+      height: 400px;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .ag-theme-alpine .ag-header-cell {
+      background-color: #e0e7ff;
+      color: #374151;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .ag-theme-alpine .ag-cell {
+      font-size: 14px;
+      padding: 8px;
+    }
+
+    .ag-theme-alpine {
+      height: 500px;
+      width: 100%;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+</head>
+<body>
+    <div id="myGrid" class="ag-theme-alpine"></div>
+
+  <script>
+    const endpoints = {
+      "Jupiter": "http://t5810/api/health/stats",
+      "U530": "http://u530/stats",
+      "E6330": "http://e6330/stats",
+      "E6330-2": "http://e6330-2/stats",
+      "E7270": "http://e7270:8000/stats",
+      // Add other machines here
+    };
+
+    const gridOptions = {
+      columnDefs: [
+        { field: "hostname", headerName: "Host" },
+        { field: "cpu", headerName: "CPU %", cellClass: setUsageColor },
+        { field: "memory", headerName: "Memory %", cellClass: setUsageColor },
+        { field: "disk", headerName: "Disk %", cellClass: setUsageColor },
+        { field: "battery", headerName: "Battery" },
+        { field: "lastSeen", headerName: "Last Seen", valueFormatter: formatTimeAgo }
+      ],
+      rowData: [],
+      getRowId: params => params.data.hostname,
+      animateRows: true,
+      defaultColDef: {
+        resizable: true,
+        sortable: true,
+        filter: true,
+      },
+      domLayout: 'autoHeight',
+      autoSizeStrategy: { type: 'fitGridWidth' }
+
+    };
+
+    const gridDiv = document.querySelector("#myGrid");
+    const gridApi = agGrid.createGrid(gridDiv, gridOptions);
+    const latestTimestamps = {};
+
+    async function refreshStats() {
+      const now = new Date();
+
+      const timeString = now.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.title = `Server Stats - Last Update: ${timeString}`;
+
+      for (const [name, url] of Object.entries(endpoints)) {
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+
+          data.lastSeen = now.toISOString();
+          latestTimestamps[data.hostname] = now.toISOString();
+
+          const existingNode = gridApi.getRowNode(data.hostname);
+          if (existingNode) {
+            existingNode.setData(data);
+          } else {
+            gridApi.applyTransaction({ add: [data] });
+          }
+        } catch (err) {
+          // Mark offline if fetch fails
+          const offlineData = {
+            hostname: name,
+            cpu: "N/A",
+            memory: "N/A",
+            disk: "N/A",
+            battery: "N/A",
+            time: "Offline",
+            lastSeen: latestTimestamps[name] || "Never"
+          };
+
+          const existingNode = gridApi.getRowNode(name);
+          if (existingNode) {
+            existingNode.setData(offlineData);
+          } else {
+            gridApi.applyTransaction({ add: [offlineData] });
+          }
+        }
+      }
+    }
+
+    function formatTimeAgo(params) {
+      const value = params.value;
+      const timestamp = new Date(value).getTime();
+      const now = Date.now();
+      const diffSec = Math.floor((now - timestamp) / 1000);
+
+      if (isNaN(diffSec)) return value;
+      if (diffSec < 5) return "just now";
+      if (diffSec < 60) return `${diffSec} sec ago`;
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+      return new Date(value).toLocaleString();
+    }
+
+    function setUsageColor(params) {
+      if (params.value === "N/A") return "offline";
+      const v = parseFloat(params.value);
+      if (v > 80) return "high-usage";
+      if (v > 50) return "med-usage";
+      return "low-usage";
+    }
+
+    // Add usage styling via JS
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .high-usage { background-color: #fee2e2; }
+      .med-usage { background-color: #fef9c3; }
+      .low-usage { background-color: #dcfce7; }
+      .offline { color: red; font-weight: bold; }
+    `;
+    document.head.appendChild(style);
+
+    refreshStats();
+    setInterval(refreshStats, 5000); // every 10s
+  </script>
+</body>
+</html>

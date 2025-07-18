@@ -1,0 +1,22 @@
+services:
+
+  plex:
+    type: docker
+    container_name: plex
+    start:
+      event: after_market
+      offset: 300
+    stop:
+      event: before_market
+      offset: 300
+
+
+  win11:
+    type: docker
+    container_name: win11
+    start:
+      event: null
+      offset: 0
+    stop:
+      event: before_market
+      offset: 300

@@ -43,3 +43,10 @@ docker compose up -d <affected_service_name>
 or to restart all:
 docker compose up -d
 
+d. to remove a service and build again
+docker compose rm -f <service_name>
+docker compose up -d <service_name>
+
+---
+to restart ethernet on t5810
+sudo ip link set enp0s25 down && sleep 2 && sudo ip link set enp0s25 up

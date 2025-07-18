@@ -3,19 +3,20 @@ from fastapi.responses import PlainTextResponse
 import httpx
 import json
 import datetime
-from common.config import data_dir, get_redis_client_async
+from common.config import data_dir, get_redis_client_v2
 from common.my_logger import logger
 from .telegram_handler import TelegramHandlerManager
 from redis.asyncio import Redis
 
 app = FastAPI()
 router = APIRouter(prefix="/telegram")
+redis_client_1 = get_redis_client_v2(port_ix=1)
 
 with open(data_dir / 'telegram.json', 'r') as f:
     telegram_data = json.loads(f.read())
 
 TOKEN = telegram_data['token']
-NGROK_URL = telegram_data['ngrok_url']
+NGROK_URL = redis_client_1.get("ngrok_url") #telegram_data['ngrok_url']
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TOKEN}"
 
 # Redis and Handler setup
@@ -25,7 +26,7 @@ redis_client: Redis | None = None
 
 async def init_handler_manager():
     global handler_manager, redis_client
-    redis_client = await get_redis_client_async()
+    redis_client = await get_redis_client_v2(port_ix=0,asyncio=True)
     handler_manager = TelegramHandlerManager(redis_client=redis_client, api_url=TELEGRAM_API_URL)
 
 

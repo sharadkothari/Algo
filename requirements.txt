@@ -11,7 +11,7 @@ dash-bootstrap-components~=2.0.0
 plotly~=6.0.1
 
 # Data & utils
-numpy~=2.2.4
+numpy~=2.1.0
 pandas~=2.2.3
 pyarrow~=19.0.1
 fastparquet~=2024.11.0
@@ -41,3 +41,6 @@ dash_ag_grid~=31.3.1
 py_vollib~=1.0.1
 PyJWT~=2.10.1
 py_vollib_vectorized~=0.1.1
+dash_ag_grid~=31.3.1
+psutil~=7.0.0
+pydantic~=2.11.3

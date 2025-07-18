@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Service Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 2rem;
+    }
+    h1 {
+      color: #333;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    li {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 180px;
+      text-align: center;
+    }
+    a {
+      text-decoration: none;
+      color: #333;
+    }
+    img {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 0.5rem;
+    }
+    .name {
+      display: block;
+      font-weight: bold;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Media Stack Dashboard</h1>
+  <ul id="dashboard"></ul>
+
+  <script>
+    const baseHost = "http://t5810"; // Change to your host if needed
+
+    // Define services with name, port, and optional logo URL
+    const services = [
+      { name: 'Plex', port: 32400, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/plex.png"},
+      { name: 'qBittorrent', port: 8080, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/qbittorrent.png"},
+      { name: "Radarr", port: 7878, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/radarr.png" },
+      { name: "Sonarr", port: 8989, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/sonarr.png" },
+      { name: "Overseerr", port: 5055, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/overseerr.png" },
+      { name: "Prowlarr", port: 9696, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/prowlarr.png" },
+      { name: "Grafana", port: 3000, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/grafana.png" },
+      { name: "Tautulli", port: 8181, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/tautulli.png" },
+      { name: "InfluxDB", port: 8086, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/influxdb.png" },
+      { name: "Autoscan", port: 3030, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/autoscan.png" },
+      { name: "Flaresolverr", port: 8191, icon: "https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/png/flaresolverr.png"},
+      { name: "ProtonVPN", port: 0, icon: "https://f-droid.org/repo/ch.protonvpn.android/en-US/icon_xAphlcwMgx7oE7sxB15sxUFIO8geUokWkG01K1fubas=.png"},
+        ]
+    ;
+
+    const dashboard = document.getElementById("dashboard");
+
+    services.forEach(service => {
+      const li = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = `${baseHost}:${service.port}/`;
+      link.target = "_blank";
+
+      const img = document.createElement("img");
+      img.src = service.icon;
+      img.alt = service.name;
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "name";
+      nameSpan.textContent = service.name;
+
+      link.appendChild(img);
+      link.appendChild(nameSpan);
+      li.appendChild(link);
+      dashboard.appendChild(li);
+    });
+  </script>
+</body>
+</html>
