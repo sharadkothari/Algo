@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Position Book</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    #myGrid {
+      height: 400px;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* Alternate row shading for ag-theme-alpine */
+    .ag-theme-alpine .ag-row-odd {
+      background-color: #f9f9f9;
+    }
+
+    .ag-theme-alpine .ag-row-even {
+      background-color: #ffffff;
+    }
+
+    .ag-theme-alpine .ag-header-cell {
+        font-size: 18px;
+        font-weight: bold;
+        background-color: #e0e7ff; /* Light blue header */
+        color: #374151; /* Darker text for header */
+    }
+    .ag-theme-alpine .ag-cell {
+        font-size: 16px; /* Slightly smaller cell font */
+        padding: 8px; /* Add some padding to cells */
+    }
+
+    /* Custom classes for MTM column */
+    .ag-cell-positive {
+        color: green;
+        font-weight: bold;
+    }
+
+    .ag-cell-negative {
+        color: red;
+        font-weight: bold;
+    }
+
+
+    /* Basic Tailwind-like classes for overall layout */
+    .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f3f4f6; /* Light gray background */
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .grid-wrapper {
+        width: 100%;
+        max-width: 1200px; /* Max width for the grid */
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+        padding: 20px;
+    }
+
+    .ag-theme-alpine .ag-footer-cell {
+      font-weight: bold;
+      background-color: #e0e7ff; /* Matches header background */
+      color: #374151; /* Matches header text color */
+
+    }
+
+  </style>
+</head>
+<body>
+  <div id="myGrid" class="ag-theme-alpine" style="height: 400px; width:100%;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise/dist/ag-grid-enterprise.min.js"></script>
+  <script>
+
+    let currentRowData = [];
+    let gridApi;
+    let ws;
+    let updateInterval;
+
+    // Helper Functions
+    function formatInt(val) {
+      const num = parseFloat(val);
+      return isNaN(num) ? '' : num.toFixed(0);
+    }
+
+    function formatFloat(val, precision) {
+      const num = parseFloat(val);
+      return isNaN(num) ? '' : num.toFixed(precision);
+    }
+
+    // New: Custom aggregate function for latest timestamp
+    const latestTimestampAggFunc = (params) => {
+        let latest = 0; // Initialize with 0 or -Infinity
+
+        params.values.forEach(value => {
+            // Ensure value is a number (timestamp in milliseconds)
+            if (typeof value === 'number' && value > latest) {
+                latest = value;
+            }
+        });
+        return latest;
+    };
+
+    function formatTimestamp(params) {
+      // This formatter will be used for the footer row
+      // The value here is the aggregated latest timestamp (number)
+      if (params.value && typeof params.value === 'number') {
+        const date = new Date(params.value);
+        // Format as a simple time or full date/time string
+        return date.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        // Or for full date and time:
+        // return date.toLocaleString('en-GB', { hour12: false });
+      }
+      return ''; // Return empty if no valid timestamp
+    }
+
+    function formatTimestampAgo(params) {
+      // Check if it's the footer row
+      if (params.node && params.node.footer) {
+        const date = new Date(params.value);
+        return isNaN(date.getTime())
+          ? params.value // Return original if invalid
+          : date.toLocaleTimeString('en-GB', { hour12: false });
+      }
+
+      // Original logic for regular rows
+      const timestamp = new Date(params.value).getTime();
+      const now = new Date().getTime();
+      const diffSeconds = Math.floor((now - timestamp) / 1000);
+
+      if (isNaN(diffSeconds)) {
+          return params.value;
+      } else if (diffSeconds < 5) {
+          return 'just now';
+      } else if (diffSeconds < 60) {
+          return `${diffSeconds} sec ago`;
+      } else if (diffSeconds < 3600) { // Less than an hour
+          const minutes = Math.floor(diffSeconds / 60);
+          return `${minutes} min ago`;
+      } else if (diffSeconds < 86400) { // Less than 24 hours
+          const hours = Math.floor(diffSeconds / 3600);
+          return `${hours} hr ago`;
+      } else {
+          // For older timestamps in regular rows, still show the full date
+          const date = new Date(params.value);
+          return date.toLocaleDateString('en-GB');
+      }
+    }
+
+    const gridOptions = {
+      columnDefs: [
+      { field: 'Broker',
+          cellRenderer: params => {if (params.node.footer) { return '<strong>Total</strong>'; } return params.value; },
+          width:200, sort:"asc",
+      },
+        { field: 'Margin_Used', headerName: "Mgn" },
+        { field: 'PE_Qty', aggFunc: 'sum', headerName: "P#"},
+        { field: 'CE_Qty', aggFunc: 'sum' , headerName: "C#"},
+        { field: 'Premium', aggFunc: 'sum',valueFormatter: params => formatInt(params.value),
+            headerName: "Prem"},
+        {
+          field: 'MTM',
+          aggFunc: 'sum',
+          valueFormatter: params => formatInt(params.value),
+          cellClassRules: {'ag-cell-positive': 'x >= 0','ag-cell-negative': 'x < 0',}
+        },
+        {
+          field: 'Pos_Delta',
+          headerName: 'Pos Δ',
+          aggFunc: 'sum',
+          valueFormatter: params => formatFloat(params.value, 2)
+        },
+        {
+          field: 'timestamp',
+          headerName: 'Upd At',
+          valueFormatter: formatTimestampAgo, // For regular rows
+          aggFunc: latestTimestampAggFunc, // For the footer row
+          // Optionally, a different value formatter for the footer itself
+          footerValueFormatter: formatTimestamp,
+        }
+      ],
+      rowData: [],
+      getRowId: params => (params.data.Broker || '').trim(),
+      animateRows: true,
+      groupDisplayType: 'groupRows',
+      suppressAggFuncInHeader: true,
+      grandTotalRow: "bottom",
+      autoSizeStrategy: {type: 'fitGridWidth', },
+    };
+
+    // --- WebSocket Connection Management ---
+    function connectWebSocket() {
+        // Clear any existing connection/interval first
+        if (ws) {
+            ws.close();
+            ws = null;
+        }
+        if (updateInterval) {
+            clearInterval(updateInterval);
+            updateInterval = null;
+        }
+
+        ws = new WebSocket('ws://t5810:5009/ws/');
+
+        ws.onmessage = function (event) {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'position_book') {
+                const update = {
+                    ...msg.data,
+                    Broker: msg.data.Broker.trim(),
+                    PE_Qty: parseFloat(msg.data.PE_Qty),
+                    CE_Qty: parseFloat(msg.data.CE_Qty),
+                    Premium: parseFloat(msg.data.Premium),
+                    MTM: parseFloat(msg.data.MTM),
+                    Pos_Delta: parseFloat(msg.data.Pos_Delta),
+                    // Ensure timestamp is converted to a number (milliseconds) for aggregation
+                    timestamp: new Date(msg.data.timestamp).getTime()
+                };
+
+                const existingIndex = currentRowData.findIndex(row => (row.Broker || '').trim() === update.Broker);
+                if (existingIndex !== -1) {
+                    currentRowData[existingIndex] = update;
+                } else {
+                    currentRowData.push(update);
+                }
+                gridApi.setGridOption('rowData', currentRowData);
+            }
+        };
+
+        ws.onopen = () => {
+            console.log('✅ WebSocket connected');
+            if (!updateInterval) {
+                updateInterval = setInterval(() => {
+                    gridApi.forEachNode(node => {
+                        gridApi.refreshCells({
+                            rowNodes: [node],
+                            columns: ['timestamp'],
+                            force: true
+                        });
+                    });
+                }, 1000);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('❌ WebSocket disconnected. Attempting to reconnect...');
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            setTimeout(connectWebSocket, 5000);
+        };
+
+        ws.onerror = e => console.error('WebSocket error:', e);
+    }
+
+    // --- DOM Content Loaded ---
+    document.addEventListener('DOMContentLoaded', function () {
+      const myGridElement = document.querySelector('#myGrid');
+      gridApi = agGrid.createGrid(myGridElement, gridOptions);
+
+      connectWebSocket();
+
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          console.log('Page is visible. Checking WebSocket connection...');
+          if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+            console.log('WebSocket was closed, attempting to reconnect...');
+            connectWebSocket();
+          }
+          gridApi.refreshCells({ force: true });
+        } else {
+          console.log('Page is hidden. WebSocket might be throttled or disconnected.');
+        }
+      });
+    });
+
+  </script>
+</body>
+</html>

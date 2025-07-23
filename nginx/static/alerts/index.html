@@ -10,11 +10,11 @@
     <style>
         #grid { height: 400px; width: 100% }
         .ag-theme-alpine .ag-header-cell {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             }
         .ag-theme-alpine .ag-cell {
-            font-size: 18px;
+            font-size: 16px;
             }
         .status-triggered {
             background-color: red !important;
@@ -109,8 +109,8 @@
         let gridOptions = {
             columnDefs: [
                 { field: "symbol", headerName: "Symbol", editable: false, rowDrag: true },
-                { field: "timestamp", headerName: "Current Time", editable: false, cellDataType: "text", valueFormatter: params => params.value || '' },
-                { field: "last_price", headerName: "Current Price", editable: false },
+                { field: "timestamp", headerName: "Cur Time", editable: false, cellDataType: "text", valueFormatter: params => params.value || '' },
+                { field: "last_price", headerName: "Cur Price", editable: false },
                 { field: "operator", headerName: "Operator", editable: true, cellEditor: 'agSelectCellEditor', singleClickEdit: true,
                           cellEditorParams: { values: ['<', '=', '>'] },
                           cellRenderer: (params) => {const value = params.value;
@@ -139,7 +139,8 @@
             autoSizeStrategy: {type: 'fitGridWidth',},
             domLayout: 'autoHeight',
             rowDragManaged: true,
-            animateRows: true
+            animateRows: true,
+
         };
 
         function numberParser(params) {

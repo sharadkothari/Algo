@@ -1,0 +1,48 @@
+location /radarr/ {
+    proxy_pass http://t5810:7878/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/radarr/(.*)$ /$1 break;
+}
+
+location /sonarr/ {
+    proxy_pass http://localhost:8989/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/sonarr/(.*)$ /$1 break;
+}
+
+location /prowlarr/ {
+    proxy_pass http://localhost:9696/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/prowlarr/(.*)$ /$1 break;
+}
+
+location /tautulli/ {
+    proxy_pass http://localhost:8181/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/tautulli/(.*)$ /$1 break;
+}
+
+location /overseerr/ {
+    proxy_pass http://localhost:5055/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/overseerr/(.*)$ /$1 break;
+}
+
+location /grafana/ {
+    proxy_pass http://localhost:3000/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/grafana/(.*)$ /$1 break;
+}
+
+location /influxdb/ {
+    proxy_pass http://localhost:8086/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/influxdb/(.*)$ /$1 break;
+}
+
+location /autoscan/ {
+    proxy_pass http://localhost:3030/;
+    include /etc/nginx/common_proxy_headers.conf;
+    rewrite ^/autoscan/(.*)$ /$1 break;
+}
+

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Index Ticker Monitor</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #eee;
+      font-family: sans-serif;
+      height: 100%;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .status { font-size: 1.5rem; margin-bottom: 1rem; }
+    .healthy { color: limegreen; }
+    .delayed { color: orange; }
+    .stale, .disconnected { color: red; }
+
+    .card {
+      background: #222;
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem;
+      box-shadow: 0 0 10px #000;
+      max-width: 400px;
+    }
+
+    .label { font-weight: bold; }
+    .ticker-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ticker-container">
+    <!-- NIFTY 50 Card -->
+    <div class="card" id="nifty-card">
+      <div class="status" id="nifty-status">Connecting...</div>
+      <div><span class="label">NIFTY 50 Last Price:</span> <span id="nifty-price">--</span></div>
+      <div><span class="label">Change:</span> <span id="nifty-change">--</span></div>
+      <div><span class="label">Change %:</span> <span id="nifty-change-pct">--</span></div>
+      <div><span class="label">Timestamp:</span> <span id="nifty-time">--</span></div>
+      <div><span class="label">Delay:</span> <span id="nifty-delay">--</span> seconds</div>
+    </div>
+
+    <!-- SENSEX Card -->
+    <div class="card" id="sensex-card">
+      <div class="status" id="sensex-status">Connecting...</div>
+      <div><span class="label">SENSEX Last Price:</span> <span id="sensex-price">--</span></div>
+      <div><span class="label">Change:</span> <span id="sensex-change">--</span></div>
+      <div><span class="label">Change %:</span> <span id="sensex-change-pct">--</span></div>
+      <div><span class="label">Timestamp:</span> <span id="sensex-time">--</span></div>
+      <div><span class="label">Delay:</span> <span id="sensex-delay">--</span> seconds</div>
+    </div>
+  </div>
+
+  <script>
+    const INDEXES = {
+      "NSE:NIFTY 50": {
+        prefix: "nifty",
+        lastExchangeTimestamp: null
+      },
+      "BSE:SENSEX": {
+        prefix: "sensex",
+        lastExchangeTimestamp: null
+      }
+    };
+
+    function updateHealthStatus(prefix, delay) {
+      const statusEl = document.getElementById(`${prefix}-status`);
+      if (delay < 2) {
+        statusEl.textContent = "🟢 Healthy";
+        statusEl.className = "status healthy";
+      } else if (delay < 5) {
+        statusEl.textContent = "⚠️ Delayed";
+        statusEl.className = "status delayed";
+      } else {
+        statusEl.textContent = "🔴 Stale";
+        statusEl.className = "status stale";
+      }
+    }
+
+    function updateTicker(symbol, data) {
+      const { prefix } = INDEXES[symbol];
+      const ts = new Date(data.exchange_timestamp);
+      INDEXES[symbol].lastExchangeTimestamp = ts.getTime();
+
+      const lastPrice = data.last_price;
+      const close = data.ohlc.close;
+      const change = (lastPrice - close).toFixed(2);
+      const changePct = ((lastPrice - close) / close * 100).toFixed(2);
+
+      document.getElementById(`${prefix}-price`).textContent = lastPrice.toFixed(2);
+      document.getElementById(`${prefix}-change`).textContent = `${change}`;
+      document.getElementById(`${prefix}-change-pct`).textContent = `${changePct}%`;
+      document.getElementById(`${prefix}-time`).textContent = ts.toLocaleTimeString();
+    }
+
+    function connectSocket() {
+      const socket = new WebSocket("ws://t5810:5009/ws/");
+
+      socket.onopen = () => {
+        console.log("✅ WebSocket connected.");
+        Object.values(INDEXES).forEach(({ prefix }) => {
+          const statusEl = document.getElementById(`${prefix}-status`);
+          statusEl.textContent = "🟢 Connected";
+          statusEl.className = "status healthy";
+        });
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type !== "tick") return;
+          const data = message.data;
+
+          Object.keys(INDEXES).forEach(symbol => {
+            if (data[symbol]) {
+              updateTicker(symbol, data[symbol]);
+            }
+          });
+
+        } catch (err) {
+          console.error("Parsing error:", err);
+        }
+      };
+
+      socket.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        socket.close();
+      };
+
+      socket.onclose = () => {
+        console.warn("❌ WebSocket closed. Reconnecting in 5s...");
+        Object.values(INDEXES).forEach(({ prefix }) => {
+          const statusEl = document.getElementById(`${prefix}-status`);
+          statusEl.textContent = "🔴 Disconnected";
+          statusEl.className = "status disconnected";
+        });
+        setTimeout(connectSocket, 5000);
+      };
+
+      // Update delay every second
+      setInterval(() => {
+        Object.entries(INDEXES).forEach(([symbol, { prefix, lastExchangeTimestamp }]) => {
+          const delay = lastExchangeTimestamp ? ((Date.now() - lastExchangeTimestamp) / 1000).toFixed(2) : "--";
+          document.getElementById(`${prefix}-delay`).textContent = delay;
+          updateHealthStatus(prefix, parseFloat(delay) || Infinity);
+        });
+      }, 1000);
+    }
+
+    // Start
+    connectSocket();
+
+    // Auto refresh every 5 minutes
+    setTimeout(() => {
+      console.log("🔄 Auto-refreshing page");
+      location.reload();
+    }, 5 * 60 * 1000);
+  </script>
+</body>
+</html>

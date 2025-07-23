@@ -53,19 +53,19 @@
     const gridOptions = {
       columnDefs: [
         { field: "hostname", headerName: "Host" },
-        { field: "cpu", headerName: "CPU %", cellClass: setUsageColor },
-        { field: "memory", headerName: "Memory %", cellClass: setUsageColor },
-        { field: "disk", headerName: "Disk %", cellClass: setUsageColor },
-        { field: "battery", headerName: "Battery" },
-        { field: "lastSeen", headerName: "Last Seen", valueFormatter: formatTimeAgo }
+        { field: "cpu", headerName: "CPU", cellClass: setUsageColor },
+        { field: "memory", headerName: "RAM", cellClass: setUsageColor },
+        { field: "disk", headerName: "Disk", cellClass: setUsageColor },
+        { field: "battery", headerName: "Bat" },
+        { field: "lastSeen", headerName: "Last", valueFormatter: formatTimeAgo }
       ],
       rowData: [],
       getRowId: params => params.data.hostname,
       animateRows: true,
       defaultColDef: {
         resizable: true,
-        sortable: true,
-        filter: true,
+        sortable: false,
+        filter: false,
       },
       domLayout: 'autoHeight',
       autoSizeStrategy: { type: 'fitGridWidth' }

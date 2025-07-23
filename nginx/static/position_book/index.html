@@ -9,14 +9,20 @@
       margin: 0;
       font-family: 'Inter', sans-serif;
     }
+
+    .grid-wrapper {
+      height: 100%;
+      width: 100%;
+      position: relative;
+    }
+
     #myGrid {
-      height: 400px;
+      height: calc(100vh - 4px);
       width: 100%;
       border-radius: 8px;
       overflow: hidden;
     }
 
-    /* Alternate row shading for ag-theme-alpine */
     .ag-theme-alpine .ag-row-odd {
       background-color: #f9f9f9;
     }
@@ -26,266 +32,298 @@
     }
 
     .ag-theme-alpine .ag-header-cell {
-        font-size: 18px;
-        font-weight: bold;
-        background-color: #e0e7ff; /* Light blue header */
-        color: #374151; /* Darker text for header */
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #e0e7ff;
+      color: #374151;
     }
+
     .ag-theme-alpine .ag-cell {
-        font-size: 16px; /* Slightly smaller cell font */
-        padding: 8px; /* Add some padding to cells */
-    }
-
-    /* Custom classes for MTM column */
-    .ag-cell-positive {
-        color: green;
-        font-weight: bold;
-    }
-
-    .ag-cell-negative {
-        color: red;
-        font-weight: bold;
-    }
-
-
-    /* Basic Tailwind-like classes for overall layout */
-    .container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        background-color: #f3f4f6; /* Light gray background */
-        padding: 20px;
-        box-sizing: border-box;
-    }
-
-    .grid-wrapper {
-        width: 100%;
-        max-width: 1200px; /* Max width for the grid */
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
-        padding: 20px;
+      font-size: 16px;
+      padding: 8px;
     }
 
     .ag-theme-alpine .ag-footer-cell {
       font-weight: bold;
-      background-color: #e0e7ff; /* Matches header background */
-      color: #374151; /* Matches header text color */
-
+      background-color: #e0e7ff;
+      color: #374151;
     }
 
+    .ag-cell-positive {
+      color: green;
+      font-weight: bold;
+    }
+
+    .ag-cell-negative {
+      color: red;
+      font-weight: bold;
+    }
+
+    .view-toggle {
+      position: absolute;
+      bottom: 5px;        /* Anchors to bottom */
+      left: 1px;          /* Anchors to left */
+      margin-bottom: 0;    /* Remove default margin */
+      z-index: 10;         /* Make sure it stays above the grid */
+    }
+
+    .view-toggle button {
+      background-color: #3b82f6;
+      color: white;
+      padding: 8px 16px;
+      margin-left: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .view-toggle button:hover {
+      background-color: #2563eb;
+    }
   </style>
 </head>
 <body>
-  <div id="myGrid" class="ag-theme-alpine" style="height: 400px; width:100%;"></div>
+    <div class="grid-wrapper">
+      <div class="view-toggle">
+            <button id="toggleViewBtn" onclick="toggleView()">Greeks</button>
+      </div>
+      <div id="myGrid" class="ag-theme-alpine"></div>
+    </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise/dist/ag-grid-enterprise.min.js"></script>
   <script>
-
     let currentRowData = [];
     let gridApi;
     let ws;
     let updateInterval;
+    let currentView = 'mtm';
+    let lastUpdateTimestamp = 0;
+    let lastReceivedDataMap = {};  // key: Broker, value: latest data
 
-    // Helper Functions
-    function formatInt(val) {
-      const num = parseFloat(val);
-      return isNaN(num) ? '' : num.toFixed(0);
-    }
+    const formatInt = val => isNaN(parseFloat(val)) ? '' : parseFloat(val).toFixed(0);
+    const formatFloat = (val, precision) => isNaN(parseFloat(val)) ? '' : parseFloat(val).toFixed(precision);
 
-    function formatFloat(val, precision) {
-      const num = parseFloat(val);
-      return isNaN(num) ? '' : num.toFixed(precision);
-    }
-
-    // New: Custom aggregate function for latest timestamp
-    const latestTimestampAggFunc = (params) => {
-        let latest = 0; // Initialize with 0 or -Infinity
-
-        params.values.forEach(value => {
-            // Ensure value is a number (timestamp in milliseconds)
-            if (typeof value === 'number' && value > latest) {
-                latest = value;
-            }
-        });
-        return latest;
+    const latestTimestampAggFunc = params => {
+      let latest = 0;
+      params.values.forEach(value => {
+        if (typeof value === 'number' && value > latest) {
+          latest = value;
+        }
+      });
+      return latest;
     };
 
     function formatTimestamp(params) {
-      // This formatter will be used for the footer row
-      // The value here is the aggregated latest timestamp (number)
-      if (params.value && typeof params.value === 'number') {
+      if (typeof params.value === 'number') {
         const date = new Date(params.value);
-        // Format as a simple time or full date/time string
-        return date.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        // Or for full date and time:
-        // return date.toLocaleString('en-GB', { hour12: false });
+        return date.toLocaleTimeString('en-GB', { hour12: false });
       }
-      return ''; // Return empty if no valid timestamp
+      return '';
     }
 
     function formatTimestampAgo(params) {
-      // Check if it's the footer row
       if (params.node && params.node.footer) {
-        const date = new Date(params.value);
-        return isNaN(date.getTime())
-          ? params.value // Return original if invalid
-          : date.toLocaleTimeString('en-GB', { hour12: false });
+        return formatTimestamp(params);
       }
-
-      // Original logic for regular rows
       const timestamp = new Date(params.value).getTime();
-      const now = new Date().getTime();
-      const diffSeconds = Math.floor((now - timestamp) / 1000);
+      const now = Date.now();
+      const diff = Math.floor((now - timestamp) / 1000);
 
-      if (isNaN(diffSeconds)) {
-          return params.value;
-      } else if (diffSeconds < 5) {
-          return 'just now';
-      } else if (diffSeconds < 60) {
-          return `${diffSeconds} sec ago`;
-      } else if (diffSeconds < 3600) { // Less than an hour
-          const minutes = Math.floor(diffSeconds / 60);
-          return `${minutes} min ago`;
-      } else if (diffSeconds < 86400) { // Less than 24 hours
-          const hours = Math.floor(diffSeconds / 3600);
-          return `${hours} hr ago`;
-      } else {
-          // For older timestamps in regular rows, still show the full date
-          const date = new Date(params.value);
-          return date.toLocaleDateString('en-GB');
-      }
+      if (isNaN(diff)) return params.value;
+      if (diff < 5) return 'just now';
+      if (diff < 60) return `${diff} sec ago`;
+      if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+
+      return new Date(params.value).toLocaleDateString('en-GB');
     }
+
+    const mtmColumns = [
+      {
+        field: 'Broker',
+        cellRenderer: params => params.node.footer ? '<strong>Total</strong>' : params.value,
+        width: 200,
+        sort: "asc"
+      },
+      { field: 'Margin_Used', headerName: "Mgn" },
+      { field: 'PE_Qty', headerName: "P#", aggFunc: 'sum' },
+      { field: 'CE_Qty', headerName: "C#", aggFunc: 'sum' },
+      { field: 'Premium', headerName: "Prem", aggFunc: 'sum', valueFormatter: p => formatInt(p.value) },
+      {
+        field: 'MTM', aggFunc: 'sum',
+        valueFormatter: p => formatInt(p.value),
+        cellClassRules: { 'ag-cell-positive': 'x >= 0', 'ag-cell-negative': 'x < 0' }
+      },
+      {
+        field: 'Pos_Delta',
+        headerName: 'Pos Δ',
+        aggFunc: 'sum',
+        valueFormatter: p => formatFloat(p.value, 2)
+      },
+      {
+        field: 'timestamp',
+        headerName: 'Upd At',
+        valueFormatter: formatTimestampAgo,
+        aggFunc: latestTimestampAggFunc,
+        footerValueFormatter: formatTimestamp
+      }
+    ];
+
+    const greeksColumns = [
+      {
+        field: 'Broker',
+        cellRenderer: params => params.node.footer ? '<strong>Total</strong>' : params.value,
+        width: 200,
+        sort: "asc"
+      },
+      {
+        field: 'Pos_Delta', headerName: 'Δ',
+        aggFunc: 'sum', valueFormatter: p => formatFloat(p.value, 2)
+      },
+      {
+        field: 'Pos_Gamma', headerName: 'Γ',
+        aggFunc: 'sum', valueFormatter: p => formatFloat(p.value, 2)
+      },
+      {
+        field: 'Gamma_to_Delta_%', headerName: 'Γ/Δ %',
+        aggFunc: 'avg', valueFormatter: p => formatFloat(p.value, 1)
+      },
+      {
+        field: 'Delta_Skew_%', headerName: 'Δ Skew %',
+        aggFunc: 'avg', valueFormatter: p => formatFloat(p.value, 1)
+      },
+      {
+        field: 'sum_call_delta', headerName: 'Call Δ',
+        aggFunc: 'sum', valueFormatter: p => formatFloat(p.value, 2)
+      },
+      {
+        field: 'sum_put_delta', headerName: 'Put Δ',
+        aggFunc: 'sum', valueFormatter: p => formatFloat(p.value, 2)
+      },
+      {
+        field: 'timestamp',
+        headerName: 'Upd At',
+        valueFormatter: formatTimestampAgo,
+        aggFunc: latestTimestampAggFunc,
+        footerValueFormatter: formatTimestamp
+      }
+    ];
 
     const gridOptions = {
-      columnDefs: [
-      { field: 'Broker',
-          cellRenderer: params => {if (params.node.footer) { return '<strong>Total</strong>'; } return params.value; },
-          width:200, sort:"asc",
-      },
-        { field: 'Margin_Used', headerName: "Mgn" },
-        { field: 'PE_Qty', aggFunc: 'sum', headerName: "P#"},
-        { field: 'CE_Qty', aggFunc: 'sum' , headerName: "C#"},
-        { field: 'Premium', aggFunc: 'sum',valueFormatter: params => formatInt(params.value),
-            headerName: "Prem"},
-        {
-          field: 'MTM',
-          aggFunc: 'sum',
-          valueFormatter: params => formatInt(params.value),
-          cellClassRules: {'ag-cell-positive': 'x >= 0','ag-cell-negative': 'x < 0',}
-        },
-        {
-          field: 'Pos_Delta',
-          headerName: 'Pos Δ',
-          aggFunc: 'sum',
-          valueFormatter: params => formatFloat(params.value, 2)
-        },
-        {
-          field: 'timestamp',
-          headerName: 'Upd At',
-          valueFormatter: formatTimestampAgo, // For regular rows
-          aggFunc: latestTimestampAggFunc, // For the footer row
-          // Optionally, a different value formatter for the footer itself
-          footerValueFormatter: formatTimestamp,
-        }
-      ],
+      columnDefs: mtmColumns,
       rowData: [],
-      getRowId: params => (params.data.Broker || '').trim(),
+      getRowId: p => (p.data.Broker || '').trim(),
       animateRows: true,
-      groupDisplayType: 'groupRows',
       suppressAggFuncInHeader: true,
       grandTotalRow: "bottom",
-      autoSizeStrategy: {type: 'fitGridWidth', },
+      autoSizeStrategy: { type: 'fitGridWidth' }
     };
 
-    // --- WebSocket Connection Management ---
-    function connectWebSocket() {
-        // Clear any existing connection/interval first
-        if (ws) {
-            ws.close();
-            ws = null;
-        }
-        if (updateInterval) {
-            clearInterval(updateInterval);
-            updateInterval = null;
-        }
 
-        ws = new WebSocket('ws://t5810:5009/ws/');
-
-        ws.onmessage = function (event) {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'position_book') {
-                const update = {
-                    ...msg.data,
-                    Broker: msg.data.Broker.trim(),
-                    PE_Qty: parseFloat(msg.data.PE_Qty),
-                    CE_Qty: parseFloat(msg.data.CE_Qty),
-                    Premium: parseFloat(msg.data.Premium),
-                    MTM: parseFloat(msg.data.MTM),
-                    Pos_Delta: parseFloat(msg.data.Pos_Delta),
-                    // Ensure timestamp is converted to a number (milliseconds) for aggregation
-                    timestamp: new Date(msg.data.timestamp).getTime()
-                };
-
-                const existingIndex = currentRowData.findIndex(row => (row.Broker || '').trim() === update.Broker);
-                if (existingIndex !== -1) {
-                    currentRowData[existingIndex] = update;
-                } else {
-                    currentRowData.push(update);
-                }
-                gridApi.setGridOption('rowData', currentRowData);
-            }
-        };
-
-        ws.onopen = () => {
-            console.log('✅ WebSocket connected');
-            if (!updateInterval) {
-                updateInterval = setInterval(() => {
-                    gridApi.forEachNode(node => {
-                        gridApi.refreshCells({
-                            rowNodes: [node],
-                            columns: ['timestamp'],
-                            force: true
-                        });
-                    });
-                }, 1000);
-            }
-        };
-
-        ws.onclose = () => {
-            console.log('❌ WebSocket disconnected. Attempting to reconnect...');
-            if (updateInterval) {
-                clearInterval(updateInterval);
-                updateInterval = null;
-            }
-            setTimeout(connectWebSocket, 5000);
-        };
-
-        ws.onerror = e => console.error('WebSocket error:', e);
+    function toggleView() {
+      if (currentView === 'mtm') {
+        currentView = 'greeks';
+        gridApi.setGridOption('columnDefs', greeksColumns);
+        document.getElementById('toggleViewBtn').textContent = 'MTM';
+      } else {
+        currentView = 'mtm';
+        gridApi.setGridOption('columnDefs', mtmColumns);
+        document.getElementById('toggleViewBtn').textContent = 'Greeks';
+      }
+      gridApi.refreshHeader();
+      gridApi.refreshCells({ force: true });
+      setTimeout(() => gridApi.sizeColumnsToFit(), 50);
     }
 
-    // --- DOM Content Loaded ---
-    document.addEventListener('DOMContentLoaded', function () {
-      const myGridElement = document.querySelector('#myGrid');
-      gridApi = agGrid.createGrid(myGridElement, gridOptions);
 
+    function connectWebSocket() {
+      if (ws) ws.close();
+      if (updateInterval) clearInterval(updateInterval);
+
+      ws = new WebSocket('ws://t5810:5009/ws/');
+
+      ws.onmessage = function (event) {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'position_book') {
+            const raw = msg.data;
+            const broker = (raw.Broker || '').trim();
+
+            const update = {
+              ...raw,
+              Broker: broker,
+              PE_Qty: parseFloat(raw.PE_Qty),
+              CE_Qty: parseFloat(raw.CE_Qty),
+              Premium: parseFloat(raw.Premium),
+              MTM: parseFloat(raw.MTM),
+              Pos_Delta: parseFloat(raw.Pos_Delta),
+              Pos_Gamma: parseFloat(raw.Pos_Gamma),
+              Gamma_to_Delta: parseFloat(raw["Gamma_to_Delta_%"]) || 0,
+              Delta_Skew: parseFloat(raw["Delta_Skew_%"]) || 0,
+              sum_call_delta: parseFloat(raw.sum_call_delta),
+              sum_put_delta: parseFloat(raw.sum_put_delta),
+              timestamp: new Date(raw.timestamp).getTime()
+            };
+
+            // 💡 Real-time update (like setState)
+            lastReceivedDataMap[broker] = update;
+            lastUpdateTimestamp = Date.now();
+
+            // Convert state to array and push to grid
+            currentRowData = Object.values(lastReceivedDataMap);
+            gridApi.setGridOption('rowData', currentRowData);
+          }
+        };
+
+        updateInterval = setInterval(() => {
+          // Refresh timestamp cells every second
+          gridApi.forEachNode(node => {
+            gridApi.refreshCells({
+              rowNodes: [node],
+              columns: ['timestamp'],
+              force: true
+            });
+          });
+
+          // Optional: force full refresh if stale
+          const now = Date.now();
+          if (now - lastUpdateTimestamp > 10_000) {
+            console.warn("⚠️ Fallback refresh: WebSocket may be stale.");
+            gridApi.setGridOption('rowData', Object.values(lastReceivedDataMap));
+          }
+        }, 1000);
+
+      ws.onopen = () => {
+        console.log('✅ WebSocket connected');
+        updateInterval = setInterval(() => {
+          gridApi.forEachNode(node => {
+            gridApi.refreshCells({ rowNodes: [node], columns: ['timestamp'], force: true });
+          });
+        }, 1000);
+      };
+
+      ws.onclose = () => {
+        console.log('❌ WebSocket disconnected. Reconnecting...');
+        if (updateInterval) clearInterval(updateInterval);
+        setTimeout(connectWebSocket, 5000);
+      };
+
+      ws.onerror = e => console.error('WebSocket error:', e);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      gridApi = agGrid.createGrid(document.getElementById('myGrid'), gridOptions);
       connectWebSocket();
 
-      document.addEventListener('visibilitychange', function() {
+      document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          console.log('Page is visible. Checking WebSocket connection...');
           if (ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-            console.log('WebSocket was closed, attempting to reconnect...');
             connectWebSocket();
           }
           gridApi.refreshCells({ force: true });
-        } else {
-          console.log('Page is hidden. WebSocket might be throttled or disconnected.');
         }
       });
     });
-
   </script>
 </body>
 </html>
