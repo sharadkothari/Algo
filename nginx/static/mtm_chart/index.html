@@ -16,7 +16,7 @@
         }
 
         #controls {
-            padding: 10px;
+            padding: 0px;
             background-color: #f0f0f0;
             flex-shrink: 0; /* Prevent controls from shrinking */
         }
@@ -29,7 +29,6 @@
 </head>
 <body>
     <div id="controls">
-        <label for="broker-select">Select Broker:</label>
         <select id="broker-select"></select>
     </div>
 
@@ -86,24 +85,37 @@
             chartData[broker].push(...newPoints); // Append new data
             lastIds[broker] = result.last_id || lastId; // Update last_id
 
-            const x = chartData[broker].map(d => d.timestamp);
-            const y = chartData[broker].map(d => d.MTM);
+            const posX = [], posY = [], negX = [], negY = [];
 
-            const lastX = x[x.length - 1];
-            const lastY = y[y.length - 1];
+            chartData[broker].forEach(d => {
+                if (d.MTM >= 0) {
+                    posX.push(d.timestamp);
+                    posY.push(d.MTM);
+                    negX.push(null);
+                    negY.push(null);
+                } else {
+                    posX.push(null);
+                    posY.push(null);
+                    negX.push(d.timestamp);
+                    negY.push(d.MTM);
+                }
+            });
+
+            const last = chartData[broker][chartData[broker].length - 1];
+            const lastX = last?.timestamp;
+            const lastY = last?.MTM;
 
             const layout = {
                 title: `${broker}`,
-                xaxis: { title: 'Timestamp' },
-                yaxis: { title: 'MTM' },
                 autosize: true,
-                margin: { l: 50, r: 50, b: 50, t: 30, pad: 4 },
-                annotations: lastX && lastY ? [{
+                margin: { l: 0, r: 0, b: 20, t: 0, pad: 0 },
+                showlegend: false,
+                annotations: lastX && lastY != null ? [{
                     x: lastX,
                     y: lastY,
                     xref: 'x',
                     yref: 'y',
-                    text: `${lastY}`,
+                    text: `${Math.round(lastY)}`,
                     showarrow: true,
                     arrowhead: 7,
                     ax: 40,
@@ -113,13 +125,25 @@
                 }] : []
             };
 
-            Plotly.newPlot("chart", [{
-                x: x,
-                y: y,
-                type: 'scatter',
-                mode: 'lines',
-                marker: { color: 'blue' }
-            }], layout, { responsive: true });
+            Plotly.newPlot("chart", [
+                {
+                    x: posX,
+                    y: posY,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Positive MTM',
+                    line: { color: 'green' }
+                },
+                {
+                    x: negX,
+                    y: negY,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Negative MTM',
+                    line: { color: 'red' }
+                }
+            ], layout, { responsive: true });
+
         } catch (error) {
             console.error("Error fetching MTM data:", error);
         }

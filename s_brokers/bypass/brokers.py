@@ -3,6 +3,7 @@ import aiohttp
 import asyncio
 from common.my_logger import logger
 import json
+from common.utils import Encrypt
 
 
 class Broker:
@@ -18,7 +19,8 @@ class Broker:
         self.r = None
 
     async def set_token(self):
-        self.token = await self.r.hget("browser_token", self.userid.lower())
+        e = Encrypt(self.userid.lower())
+        self.token = e.decrypt(await self.r.hget("browser_token", self.userid.lower()))
 
     @classmethod
     async def create(cls, userid: str, ticks=None):

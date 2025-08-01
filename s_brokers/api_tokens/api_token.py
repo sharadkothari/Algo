@@ -47,10 +47,10 @@ class KiteToken:
     def set_client_id(self, client_id: str):
         self.client_id = client_id
         self.redis_key = f"access_token_auto:{client_id}"
-        enc = Encrypt(self.client_id)
+        self.enc = Encrypt(self.client_id)
         data = broker_data[client_id]
         for k, v in data.items():
-            setattr(self, k, enc.decrypt(v))
+            setattr(self, k, self.enc.decrypt(v))
 
     def get_request_token(self) -> str | None:
         session = requests.Session()
@@ -96,7 +96,7 @@ class KiteToken:
 
         try:
             data = kite.generate_session(request_token, api_secret=self.api_secret)
-            new_access_token = data["access_token"]
+            new_access_token = self.enc.encrypt(data["access_token"])
             stored_token = redis_client.get(self.redis_key)
             if stored_token is None or stored_token != new_access_token:
                 redis_client.set(self.redis_key, new_access_token)

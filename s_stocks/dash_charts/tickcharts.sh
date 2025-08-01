@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo -ne "\033]1;tickchart\007"
+echo -ne "\033]2;tickchart\007"
+
 # Activate environment if needed
 source ~/Python/Algo/.venv/bin/activate
 

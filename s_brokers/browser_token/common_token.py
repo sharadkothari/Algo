@@ -1,4 +1,4 @@
-from common.utils import TimeCalc
+from common.utils import TimeCalc, Encrypt
 from common.config import get_redis_client_v2, get_browser_profiles
 from common.my_logger import logger
 import os
@@ -6,7 +6,6 @@ from common.telegram_bot import TelegramBotService as TelegramBot
 import time
 
 tbot = TelegramBot(send_only=True)
-
 
 class CommonToken:
 
@@ -21,8 +20,9 @@ class CommonToken:
         self.extract_token()
 
     def store_token(self, client, token):
+        e = Encrypt(client)
         self.r.expireat("browser_token", self.expiry_ts)
-        self.r.hset('browser_token', client, token)
+        self.r.hset('browser_token', client, e.encrypt(token))
 
     def extract_token(self):
         logger.info(f"Getting tokens for | {self.client_ids}")

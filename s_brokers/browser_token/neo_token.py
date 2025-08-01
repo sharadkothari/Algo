@@ -4,7 +4,7 @@ import tempfile
 import asyncio
 from common.config import get_redis_client_v2, get_browser_profiles
 from common.my_logger import logger
-from common.utils import TimeCalc
+from common.utils import TimeCalc, Encrypt
 from playwright.async_api import async_playwright
 from common.telegram_bot import TelegramBotService as TelegramBot
 import time
@@ -55,10 +55,11 @@ async def extract_token(playwright, client, profile):
 
 
 def store_token(client, token):
+    e = Encrypt(client)
     r = get_redis_client_v2(port_ix=1)
     tc = TimeCalc()
     r.expireat("browser_token", int(tc.next_6am().timestamp()))
-    r.hset('browser_token', client, token)
+    r.hset('browser_token', client, e.encrypt(token))
 
 
 async def get_token_async(client_ids):

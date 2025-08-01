@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Activate environment if needed
+# Rename the tab
+echo -ne "\033]1;btoken\007"
+echo -ne "\033]2;btoken\007"
+
+# Activate environment
 source ~/Python/Algo/.venv/bin/activate
 
 # Add project root to PYTHONPATH

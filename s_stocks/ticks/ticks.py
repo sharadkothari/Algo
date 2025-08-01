@@ -204,10 +204,10 @@ class KiteSocket(BaseService):
             logger.info(f"Error fetching instruments: {e}")
             return {}
         else:
-            idx_symbol = ["NIFTY 50", "SENSEX"]
+            idx_symbol = ["NIFTY 50", "SENSEX", "NIFTY BANK", "INDIA VIX"]
             df_idx = df_raw[df_raw.segment.isin(["INDICES"]) & df_raw.tradingsymbol.isin(idx_symbol)]
 
-            name_list = ['NIFTY', 'SENSEX']
+            name_list = ['NIFTY', 'SENSEX', "BANKNIFTY"]
             exchange_list = ['NFO', 'BFO']
 
             df_derivative = df_raw[df_raw['name'].isin(name_list) & df_raw['exchange'].isin(exchange_list)]

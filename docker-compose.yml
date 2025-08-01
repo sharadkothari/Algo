@@ -14,7 +14,9 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
-    ports: ["80:80"]
+    ports:
+      - "80:80"
+      - "5080:5080"
     extra_hosts: ["t5810:100.86.138.85"]
     restart: always
     volumes:
