@@ -7,8 +7,8 @@ from common.my_logger import logger
 import logging
 
 BROKER_KEYS = ["PE_Qty", "CE_Qty", "Premium", "MTM", "Margin_Used",
-               "Delta_Skew_%", 'Gamma_to_Delta_%', "Pos_Gamma", "Pos_Delta", "sum_call_delta", "sum_put_delta"]
-NUMERIC_KEYS = [ "PE_Qty", "CE_Qty", "Premium", "MTM", "Pos_Delta", "Pos_Gamma", "sum_call_delta", "sum_put_delta"]
+               "Delta_Skew_%", 'Gamma_to_Delta_%', "Pos_Gamma", "Pos_Delta", "Pos_Theta", "sum_call_delta", "sum_put_delta"]
+NUMERIC_KEYS = [ "PE_Qty", "CE_Qty", "Premium", "MTM", "Pos_Delta", "Pos_Theta", "Pos_Gamma", "sum_call_delta", "sum_put_delta"]
 
 
 

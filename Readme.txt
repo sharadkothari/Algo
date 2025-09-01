@@ -50,3 +50,6 @@ docker compose up -d <service_name>
 ---
 to restart ethernet on t5810
 sudo ip link set enp0s25 down && sleep 2 && sudo ip link set enp0s25 up
+
+__
+check 1

@@ -6,6 +6,7 @@ DASHBOARDS=(
     "http://t5810/static/position_book/"
     "http://t5810/static/server_stats/"
     "http://t5810/static/alerts/"
+    "http://t5810/static/mtm_chart/"
     "http://u530/dashboard"
     "http://e6330/dashboard"
     "http://e6330-2/dashboard"

@@ -28,9 +28,9 @@ else:
     url_ws = f"{server_url.replace("http", "ws")}:5009/ws/"
 
 
-def get_redis_client_v2(asyncio=False, port_ix=0):
+def get_redis_client_v2(asyncio=False, port_ix=0, decode=True):
     redis_lib = redis if not asyncio else redis.asyncio
-    redis_client = redis_lib.Redis(host=redis_host, port=redis_port + port_ix, db=redis_db, decode_responses=True)
+    redis_client = redis_lib.Redis(host=redis_host, port=redis_port + port_ix, db=redis_db, decode_responses=decode)
     # redis_client.config_set('notify-keyspace-events', 'Khg')
     return redis_client
 

@@ -11,19 +11,19 @@
             width: 100%;
             overflow: hidden;
             font-family: sans-serif;
-            display: flex; /* Use flexbox for layout */
-            flex-direction: column; /* Stack children vertically */
+            display: flex;
+            flex-direction: column;
         }
 
         #controls {
             padding: 0px;
             background-color: #f0f0f0;
-            flex-shrink: 0; /* Prevent controls from shrinking */
+            flex-shrink: 0;
         }
 
         #chart {
             width: 100%;
-            flex-grow: 1; /* Allow chart to grow and take remaining space */
+            flex-grow: 1;
         }
     </style>
 </head>
@@ -35,10 +35,10 @@
     <div id="chart"></div>
 
 <script>
-
     const apiBase = "/api/bpd";
     let selectedBroker = null;
-    const lastIds = {}; // Track last_id per broker
+    const lastIds = {};
+    const chartData = {};
 
     async function loadBrokersAndPlot() {
         try {
@@ -55,9 +55,7 @@
                 const option = document.createElement("option");
                 option.value = broker;
                 option.textContent = broker;
-                if (broker === selectedBroker) {
-                    option.selected = true;
-                }
+                if (broker === selectedBroker) option.selected = true;
                 dropdown.appendChild(option);
             });
 
@@ -69,8 +67,6 @@
         }
     }
 
-    const chartData = {}; // Keep chart data per broker
-
     async function fetchAndPlot(broker) {
         try {
             const lastId = lastIds[broker] || '0';
@@ -78,12 +74,22 @@
             const result = await response.json();
 
             const newPoints = result.data || [];
-            if (!chartData[broker]) {
-                chartData[broker] = [];
-            }
+            if (!chartData[broker]) chartData[broker] = [];
 
-            chartData[broker].push(...newPoints); // Append new data
-            lastIds[broker] = result.last_id || lastId; // Update last_id
+            chartData[broker].push(...newPoints);
+
+            // Clean and sort the data
+            chartData[broker] = chartData[broker]
+                .map(d => {
+                    const mtm = parseFloat(d.MTM);
+                    const time = new Date(d.timestamp);
+                    if (isNaN(mtm) || isNaN(time.getTime())) return null;
+                    return { timestamp: time, MTM: mtm };
+                })
+                .filter(Boolean)
+                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            lastIds[broker] = result.last_id || lastId;
 
             const posX = [], posY = [], negX = [], negY = [];
 
@@ -101,16 +107,38 @@
                 }
             });
 
-            const last = chartData[broker][chartData[broker].length - 1];
-            const lastX = last?.timestamp;
-            const lastY = last?.MTM;
+            // If there's no valid data, do not attempt to plot
+            if (posX.every(x => x === null) && negX.every(x => x === null)) {
+                console.warn("No valid MTM points to plot for broker:", broker);
+                document.getElementById("chart").innerHTML = "<p style='text-align:center;padding-top:20px;'>No MTM data available.</p>";
+                return;
+            }
+
+            // Safely find the last valid point
+            let lastX = null, lastY = null;
+            for (let i = chartData[broker].length - 1; i >= 0; i--) {
+                const d = chartData[broker][i];
+                if (d && d.timestamp && !isNaN(d.MTM)) {
+                    lastX = d.timestamp;
+                    lastY = d.MTM;
+                    break;
+                }
+            }
 
             const layout = {
-                title: `${broker}`,
                 autosize: true,
-                margin: { l: 0, r: 0, b: 20, t: 0, pad: 0 },
+                margin: { l: 60, r: 20, b: 40, t: 30, pad: 0 },
                 showlegend: false,
-                annotations: lastX && lastY != null ? [{
+                xaxis: {
+                    type: 'date',
+                    title: 'Time',
+                    tickformat: '%H:%M:%S'
+                },
+                yaxis: {
+                    title: 'MTM',
+                    automargin: true
+                },
+                annotations: (lastX !== null && lastY !== null) ? [{
                     x: lastX,
                     y: lastY,
                     xref: 'x',
@@ -151,13 +179,10 @@
 
     document.getElementById("broker-select").addEventListener("change", (e) => {
         selectedBroker = e.target.value;
-
-        // Reset chart if changing broker
         if (!chartData[selectedBroker]) {
             chartData[selectedBroker] = [];
             lastIds[selectedBroker] = '0';
         }
-
         fetchAndPlot(selectedBroker);
     });
 
@@ -172,8 +197,6 @@
         }
     }, 5000);
 </script>
-
-
 
 </body>
 </html>

@@ -34,3 +34,15 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
     command: [ "python", "docker_scheduler.py" ]
+
+
+  melange_dev_api:
+    image: monorepo_base
+    container_name: melange_dev_api
+    restart: always
+    ports: [ "5010:5010" ]
+    networks: [ default ]
+    volumes:
+      - ./dev_api:/app
+      - ../common:/app/common
+    command: [ "python", "start.py" ]

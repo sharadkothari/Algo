@@ -1,1 +1,16 @@
-o
+{
+    "India Today": "https://indiatodaylive.akamaized.net/hls/live/2014320/indiatoday/indiatodaylive/live_720p/chunks.m3u8",
+    "Times Now": "https://dztlhgid9me95.cloudfront.net/live-tv/Vidgyor/timesnow/live_720p/chunks.m3u8",
+    "NDTV": "https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678-b/ndtv24x7/masterb_720p@3.m3u8",
+    "CNN News18": "https://nw18live.cdn.jio.com/bpk-tv/CNN_News18_NW18_MOB/output01/CNN_News18_NW18_MOB-audio_98835_hin=98800-video=3724000.m3u8",
+    "CNBC TV18": "https://nw18live.cdn.jio.com/bpk-tv/CNBC_TV18_NW18_MOB/output01/CNBC_TV18_NW18_MOB-audio_98834_eng=98800-video=3724000.m3u8",
+    "ET Now": "https://dztlhgid9me95.cloudfront.net/live-tv/Vidgyor/etnow/live_720p/chunks.m3u8",
+    "ZEE Business": "https://dwby15d04agvq.cloudfront.net/index_5.m3u8",
+    "CNBC Awaaz": "https://nw18live.cdn.jio.com/bpk-tv/CNBC_Awaaz_NW18_MOB/output01/CNBC_Awaaz_NW18_MOB-audio_98834_hin=98800-video=3724000.m3u8",
+    "BBC": "https://vs-hls-push-ww-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/t=3840/v=pv14/b=5070016/main.m3u8",
+    "CNN": "https://turnerlive.warnermediacdn.com/hls/live/586495/cnngo/cnn_slate/VIDEO_0_3564000.m3u8?checkedby:iptvcat.com",
+    "Bloomberg": "https://liveprodusphoenixeast.akamaized.net/USPhx-HD/Channel-TX-USPhx-AWS-virginia-1/Source-USPhx-16k-1-s6lk2-BP-07-02-81ykIWnsMsg_live.m3u8",
+    "Fox": "http://247preview.foxnews.com/hls/live/2020027/fncv3preview/primary.m3u8",
+    "Fox HD": "https://stream2.cinerama.uz/1252/tracks-v1a1/mono.m3u8",
+    "Star Sports": "https://jf6.dunyapurkaraja.com:999/hls/star1in.m3u8?md5=b5rQUEaZcccqH503KgHaHg&expires=1743612342"
+}

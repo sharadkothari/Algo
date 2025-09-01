@@ -15,6 +15,7 @@ import asyncio
 from common.base_service import BaseService
 from common.utils import get_ngrok_url
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 
 redis_task = None
 base_service = None
@@ -53,7 +54,12 @@ async def lifespan(app: FastAPI):
         base_service.on_stop()
 
 app = FastAPI(lifespan=lifespan)
-
+app.add_middleware(
+    CORSMiddleware, # type: ignore
+    allow_origins=["*"],  # restrict here
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.exception_handler(HTTPException)
 async def common_http_exception_handler(request: Request, exc: HTTPException):

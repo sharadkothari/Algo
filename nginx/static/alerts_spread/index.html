@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerts</title>
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise/dist/ag-grid-enterprise.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community@latest/styles/ag-theme-alpine.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        #grid { height: 400px; width: 100% }
+        .ag-theme-alpine .ag-header-cell {
+            font-size: 16px;
+            font-weight: bold;
+            }
+        .ag-theme-alpine .ag-cell {
+            font-size: 16px;
+            }
+        .ag-theme-alpine .group-target {
+          background-color: #e9f7ef;
+          font-weight: bold;
+        }
+        .ag-theme-alpine .leaf-target {
+          background-color: #fff9e6;
+        }
+        .status-triggered {
+            background-color: red !important;
+            color: white !important;
+            font-weight: bold;
+        }
+            .searchable-dropdown {
+                width: 150px !important; /* Ensures uniform dropdown width */
+            }
+            label {
+                white-space: nowrap; /* Prevents labels from wrapping */
+                font-weight: bold;
+            }
+            #dropdownContainer {
+                display: flex;
+                align-items: center;
+                gap: 15px; /* Space between elements */
+                flex-wrap: nowrap; /* Ensures everything stays in one row */
+                overflow-x: auto; /* Enables horizontal scrolling on small screens */
+            }
+            #addAlertButton {
+                padding: 8px 12px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 5px;
+            }
+            #addAlertButton:hover {
+                background-color: #0056b3;
+            }
+            #symbol {
+                width: 200px !important; /* Adjust the width as needed */
+            }
+
+    </style>
+</head>
+<body>
+
+    <!-- Exchange Dropdown -->
+    <div id="dropdownContainer" style="display: flex; align-items: center; gap: 15px; flex-wrap: nowrap;">
+        <label for="exchange">Exchange:</label>
+        <select id="exchange" class="searchable-dropdown" onchange="updateDropdowns()"></select>
+
+        <label for="symbol">Symbol:</label>
+        <select id="symbol" class="searchable-dropdown" onchange="populateExpStr()"></select>
+
+        <label for="alertGroup">Group:</label>
+        <select id="alertGroup" class="searchable-dropdown"></select>
+
+        <div id="optionsDropdowns" style="display: flex; align-items: center; gap: 15px; display: none;">
+            <label for="exp_str">Expiry:</label>
+            <select id="exp_str" class="searchable-dropdown" onchange="populateOptType()"></select>
+
+            <label for="opt_type">Option Type:</label>
+            <select id="opt_type" class="searchable-dropdown" onchange="populateStrikes()"></select>
+
+            <label for="strike">Strike:</label>
+            <select id="strike" class="searchable-dropdown"></select>
+        </div>
+
+        <!-- Add Alert Button -->
+        <button id="addAlertButton" onclick="addAlert()">Add Alert</button>
+    </div>
+
+
+    <!-- Include jQuery & Select2 for Searchable Dropdowns -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
+
+    <div id="grid" class="ag-theme-alpine"></div>
+    <audio id="alertSound">
+     <source id="alertSource" type="audio/mp3">
+    </audio>
+
+    <script>
+        let exchangeData = {}; // Store exchange-symbol mapping globally
+        const BASE_URL = "/dev/alerts2"
+        const TREE_API = `${BASE_URL}/tree`
+
+
+
+        $(document).ready(() => {
+            fetchSymbols();
+            $(".searchable-dropdown").select2({
+                width: '150px', // Ensures proper width
+                dropdownAutoWidth: true
+            }).on('select2:open', function () {
+                let searchField = $('.select2-search__field');
+                searchField[0].focus(); // Auto-focus the search box
+            });
+        });
+        let alertIntervals = {};
+
+        let gridOptions = {
+            columnDefs: [
+                { field: "timestamp", headerName: "Cur Time", editable: false, cellDataType: "text", valueFormatter: params => params.value || '' },
+                {field: "qty", headerName: "Qty",  editable: true, valueParser: numberParser,
+                      cellRenderer: params => {  return params.node.group ? "" : params.value;}},
+                {
+                  field: "last_price",
+                  headerName: "Current",
+                  valueGetter: params => {
+                    const data = params.data;
+
+                    if (params.node.childrenAfterGroup?.length > 0) {
+                      let total = 0;
+                      params.node.childrenAfterGroup.forEach(child => {
+                        const qty = parseFloat(child.data?.qty) || 0;
+                        const price = parseFloat(child.data?.last_price) || 0;
+                        total += qty * price;
+                      });
+                      return total.toFixed(2);
+                    }
+                    // Leaf node
+                    return data?.last_price ?? '';
+                  }
+                },
+
+
+            {
+              field: "operator",
+              headerName: "Operator",
+              editable: params => params.node.group || !params.node.group, // both group and leaf
+              cellEditor: 'agSelectCellEditor',
+              singleClickEdit: true,
+              cellEditorParams: { values: ['<', '=', '>'] },
+              cellRenderer: params => {
+                const value = params.value;
+                let color = 'black';
+                if (value === '<') color = 'red';
+                else if (value === '>') color = 'green';
+                return `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
+              }
+            },
+
+                {
+                  field: "target",
+                  headerName: "Target",
+                  valueParser: numberParser,
+                  singleClickEdit: true,
+                  editable: params => params.node.group || !params.node.group, // both
+                  valueGetter: params => params.data?.target ?? '',
+                  cellClassRules: {
+                      'group-target': params => params.node.group,
+                      'leaf-target': params => !params.node.group
+                    }
+                },
+                //{ field: "progress", headerName: "Progress", cellRenderer: ProgressBarRenderer },
+                { field: "status", headerName: "Status", editable: false, cellClassRules: { 'status-triggered': params => params.value === 'Triggered'} },
+                {
+                  field: "action",
+                  headerName: "Action",
+                  cellRenderer: function (params) {
+                    const node = params.node;
+                    const data = params.data;
+                    if (!data) return '';
+
+                    const isGroup = node.group;
+                    const id = data.id;  // only for leaves
+                    const key = node.key;  // only for groups
+                    const status = data.status;
+
+                    if (isGroup) {
+                      // Group node buttons based on status
+                      if (status === "Pending") {
+                        return `<button onclick="setGroupAlert('${key}')">Set</button>`;
+                      } else if (status === "Triggered") {
+                        return `<button onclick="ackGroupAlert('${key}')">Ack</button>`;
+                      } else if (status === "Acknowledged") {
+                        return `<button onclick="resetGroupAlert('${key}')">Reset</button>`;
+                      }
+                      return '';
+                    } else {
+                      // Leaf node buttons
+                      if (status === "Pending") {
+                        return `<button onclick="setAlert('${id}')">Set</button>`;
+                      } else if (status === "Triggered") {
+                        return `<button onclick="ackAlert('${id}')">Ack</button>`;
+                      } else if (status === "Active") {
+                        return `<button onclick="deleteAlert('${id}')">Del</button>`;
+                      } else if (status === "Acknowledged") {
+                        return `
+                          <button onclick="deleteAlert('${id}')">Del</button>
+                          <button onclick="resetAlert('${id}')">Reset</button>
+                        `;
+                      }
+                      return '';
+                    }
+                  }
+                }
+              ],
+            rowData: [],
+            getRowId: params => params.data.id,
+            autoSizeStrategy: {type: 'fitGridWidth',},
+            domLayout: 'autoHeight',
+            rowDragManaged: true,
+            animateRows: true,
+            treeData: true,
+            groupDefaultExpanded: -1,
+            getDataPath: data => data.path,
+            autoGroupColumnDef: {
+                headerName: "Group/Symbol",
+                field: "symbol", // optional: for filters
+                cellRendererParams: {
+                    suppressCount: true,
+                    innerRenderer: 'agGroupCellRenderer'
+                },
+                rowDrag: true,
+            },
+          editable: params => {
+            const field = params.colDef.field;
+            return params.node.group && (field === 'operator' || field === 'target');
+          }
+        };
+
+        function numberParser(params) {
+            let newValue = parseFloat(params.newValue);
+            //return isNaN(newValue) ? null : newValue;
+            return isNaN(newValue) ? '' : newValue;
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const gridDiv = document.querySelector("#grid");
+            let gridApi = agGrid.createGrid(gridDiv, gridOptions);
+            gridOptions.api = gridApi;
+            setTimeout(fetchAlerts, 500); // Delay fetching alerts to ensure AG Grid is ready
+        });
+
+
+        function fetchSymbols() {
+            $.get(`${BASE_URL}/symbols`, function(data) {
+                exchangeData = data;
+                let exchangeDropdown = $('#exchange');
+                exchangeDropdown.empty().append(new Option("Select Exchange", ""));
+
+                Object.keys(data).forEach(exchange => {
+                    exchangeDropdown.append(new Option(exchange, exchange));
+                });
+                exchangeDropdown.trigger('change'); // Apply select2 update
+            });
+        }
+
+        function updateDropdowns() {
+            let selectedExchange = $('#exchange').val();
+            let symbolDropdown = $('#symbol');
+            let optionsDiv = $('#optionsDropdowns');
+
+            symbolDropdown.empty().append(new Option("Select Symbol", ""));
+
+            if (exchangeData[selectedExchange]) {
+                let isOptionsMarket = (selectedExchange === "NFO" || selectedExchange === "BFO");
+
+                optionsDiv.toggle(isOptionsMarket); // Show/hide option-related dropdowns
+
+                let symbols = isOptionsMarket ? Object.keys(exchangeData[selectedExchange]) : exchangeData[selectedExchange]["symbols"];
+                populateDropdown(symbolDropdown, symbols);
+            }
+        }
+
+        function populateExpStr() {
+            let selectedExchange = $('#exchange').val();
+            let selectedSymbol = $('#symbol').val();
+            let expDropdown = $('#exp_str');
+            expDropdown.empty();
+
+            if (exchangeData[selectedExchange] && exchangeData[selectedExchange][selectedSymbol]) {
+                let expiries = Object.keys(exchangeData[selectedExchange][selectedSymbol]);
+                populateDropdown(expDropdown, expiries);
+            }
+        }
+
+        function populateOptType() {
+            let selectedExchange = $('#exchange').val();
+            let selectedSymbol = $('#symbol').val();
+            let selectedExp = $('#exp_str').val();
+            let optTypeDropdown = $('#opt_type');
+            optTypeDropdown.empty();
+
+            if (exchangeData[selectedExchange] && exchangeData[selectedExchange][selectedSymbol]
+                && exchangeData[selectedExchange][selectedSymbol][selectedExp]) {
+                let optTypes = ["CE", "PE"]; // Fixed values for Call and Put options
+                populateDropdown(optTypeDropdown, optTypes);
+            }
+        }
+
+        function populateStrikes() {
+            let selectedExchange = $('#exchange').val();
+            let selectedSymbol = $('#symbol').val();
+            let selectedExp = $('#exp_str').val();
+            let selectedOptType = $('#opt_type').val();
+            let strikeDropdown = $('#strike');
+            strikeDropdown.empty();
+
+            if (exchangeData[selectedExchange] && exchangeData[selectedExchange][selectedSymbol]
+                && exchangeData[selectedExchange][selectedSymbol][selectedExp]) {
+                let strikes = Object.keys(exchangeData[selectedExchange][selectedSymbol][selectedExp]);
+                populateDropdown(strikeDropdown, strikes);
+            }
+        }
+
+        function populateDropdown(dropdown, values) {
+            dropdown.empty();
+
+            if (values.length === 1) {
+                dropdown.append(new Option(values[0], values[0], true, true)); // Auto-select
+                dropdown.trigger('change'); // Ensure change event is fired
+            } else {
+                dropdown.append(new Option("Select", ""));
+                values.forEach(value => dropdown.append(new Option(value, value)));
+            }
+
+            dropdown.select2(); // Reapply Select2 to update UI
+        }
+
+        function populateSymbols() {
+            let selectedExchange = $('#exchange').val();
+            let symbolDropdown = $('#symbol');
+
+            symbolDropdown.empty().append(new Option("Select Symbol", ""));
+
+            if (exchangeData[selectedExchange]) {
+                exchangeData[selectedExchange]
+                    .sort()
+                    .forEach(symbol => {
+                    symbolDropdown.append(new Option(symbol, `${selectedExchange}:${symbol}`));
+                });
+            }
+        }
+
+        function addAlert() {
+            let exchange = $('#exchange').val();
+            let symbol = $('#symbol').val();
+
+            if (!exchange || !symbol) {
+                alert("Please select an exchange and symbol.");
+                return;
+            }
+
+            let fullSymbol = `${exchange}:${symbol}`;
+
+            // Check if options dropdowns are visible
+            if ($('#optionsDropdowns').is(":visible")) {
+                let expStr = $('#exp_str').val();
+                let strike = $('#strike').val();
+                let optType = $('#opt_type').val();
+
+                if (!expStr || !strike || !optType) {
+                    alert("Please select expiry, strike, and option type.");
+                    return;
+                }
+
+                fullSymbol = `${exchange}:${symbol}${expStr}${strike}${optType}`;
+            }
+
+            let group = $('#alertGroup').val() || "Unassigned";
+            let newAlert = {
+                symbol: fullSymbol,
+                qty: 1,
+                operator: '',
+                target: '',
+                status: 'Pending',
+                id: `tmp-${Date.now()}`,
+                path: [group, fullSymbol]
+            };
+
+            gridOptions.api.applyTransaction({ add: [newAlert] });
+        }
+
+        function fetchAlerts() {
+            $.get(`${TREE_API}`, function(alerts) {
+                console.log("Fetched alerts:", alerts);
+
+                const rowData = Object.entries(alerts).map(([id, alert]) => ({
+                    id,
+                    ...alert,
+                    path: alert.path || ["Unassigned", alert.symbol]
+                }));
+
+                if (gridOptions.api) {
+                    gridOptions.api.setGridOption('rowData', rowData);
+                    gridOptions.api.refreshClientSideRowModel('group');
+                    gridOptions.api.refreshCells({ force: true });
+                    updateGroupDropdown(rowData); // ✅ Extract group names directly
+                } else {
+                    console.error("AG Grid API not initialized yet.");
+                    setTimeout(fetchAlerts, 500); // Retry after 500ms
+                }
+            }).fail(err => {
+                console.error("Error fetching alerts:", err);
+            });
+        }
+
+        function setAlert(rowId) {
+            const rowNode = gridOptions.api.getRowNode(rowId);
+            if (!rowNode || !rowNode.data) return;
+
+            let alertData = { ...rowNode.data };
+
+            if (!alertData.operator || alertData.target === '' || isNaN(alertData.target)) {
+                alert("Please set operator and target value before activating alert.");
+                return;
+            }
+
+            // ✅ Ensure qty is preserved
+            alertData.qty = parseFloat(alertData.qty) || 1;
+
+            // Clean up frontend-only fields
+            delete alertData.status; // optional
+            delete alertData.timestamp;
+
+            $.ajax({
+                url: `${TREE_API}`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(alertData),
+                success: function(response) {
+                    if (response.id) {
+                        alertData.id = response.id;
+                        alertData.status = 'Active';
+                        gridOptions.api.applyTransaction({ remove: [rowNode.data] });
+                        gridOptions.api.applyTransaction({ add: [alertData] });
+                        gridOptions.api.refreshClientSideRowModel('group');
+                    }
+                },
+                error: function(err) {
+                    console.error("Error setting alert", err);
+                    alert("Error setting alert");
+                }
+            });
+        }
+
+
+        function deleteAlert(id) {
+            if (!id) {
+                console.error("Error: Alert ID is missing.");
+                return;
+            }
+            console.log("Deleting alert with ID:", id);
+
+            $.ajax({ url: `${TREE_API}/${id}`, type: 'DELETE' })
+                .done(() => {
+                    let rowNode = gridOptions.api.getRowNode(id);
+                    if (rowNode) gridOptions.api.applyTransaction({ remove: [rowNode.data] });
+                })
+                .fail(err => {
+                    console.error("Error deleting alert", err);
+                    window.alert("Error deleting alert");
+                });
+        }
+
+        function resetAlert(id) {
+            let rowNode = gridOptions.api.getRowNode(id);
+            if (!rowNode) return;
+
+            let updatedData = { ...rowNode.data, status: "Active" };
+            rowNode.setData(updatedData);
+
+            // Optionally, you can notify the backend (if needed)
+            $.ajax({
+                url: `${TREE_API}/${id}/reset`,
+                type: 'POST',
+                success: function() {
+                    console.log("Alert reset successfully.");
+                },
+                error: function(err) {
+                    console.error("Failed to reset alert", err);
+                }
+            });
+        }
+
+        function checkTriggers() {
+            const editingCells = gridOptions.api.getEditingCells();
+            if (editingCells.length > 0) return;
+
+            gridOptions.api.forEachNode(node => {
+                if (!node.data || !node.data.symbol || node.data.status !== 'Active') return;
+
+                fetchAndUpdatePrice(node, data => {
+                    const condition = eval(`${data.last_price} ${node.data.operator} ${node.data.target}`);
+                    if (condition && !["Triggered", "Acknowledged"].includes(node.data.status)) {
+                        const updatedData = { ...node.data, status: "Triggered" };
+                        node.setData(updatedData);
+                        playAlertSound(node.data.id);
+                    }
+                });
+            });
+        }
+
+        function fetchAndUpdatePrice(node, callback = null) {
+            if (!node.data || !node.data.symbol) return;
+
+            $.get(`${BASE_URL}/tick-data/${encodeURIComponent(node.data.symbol)}`, function(data) {
+                let formattedTime = new Date(data.exchange_timestamp).toLocaleString('en-GB', {
+                    day: '2-digit', month: 'short', year: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false
+                }).replace(',', '');
+
+                node.setDataValue('timestamp', formattedTime);
+                node.setDataValue('last_price', data.last_price);
+
+                gridOptions.api.refreshClientSideRowModel('aggregate');
+
+                if (typeof callback === "function") {
+                    callback(data);
+                }
+            });
+        }
+
+        function playAlertSound(alertId) {
+            const alertSound = document.getElementById('alertSound');
+            const alertSource = document.getElementById('alertSource');
+            alertSource.src = `${BASE_URL}/play-alert`;
+            alertSound.load();
+            alertSound.play();
+            // Stop any existing interval for this alert
+            if (alertIntervals[alertId]) {
+                clearInterval(alertIntervals[alertId]);
+            }
+
+            // Start a new interval for sound replay
+            alertIntervals[alertId] = setInterval(() => {
+                alertSound.play();
+            }, 5000);
+        }
+
+        function ackAlert(id) {
+            $.ajax({
+                url: `${TREE_API}/${id}/ack`,
+                type: 'POST',
+                success: function() {
+                    let rowNode = gridOptions.api.getRowNode(id);
+                    if (rowNode) {
+                            let updatedData = { ...rowNode.data, status: "Acknowledged" };
+                            rowNode.setData(updatedData);
+                    }
+                     // Stop the alert sound and clear interval
+                     let alertSound = document.getElementById('alertSound');
+                     alertSound.pause();
+                     alertSound.currentTime = 0;
+                     if (alertIntervals[id]) {
+                            clearInterval(alertIntervals[id]);
+                            delete alertIntervals[id]; // Remove reference
+                       }
+                }
+            });
+        }
+
+        function ProgressBarRenderer(params) {
+            const startPrice = params.data.start_price || 0;
+            const currentPrice = params.data.last_price || 0;
+            const targetPrice = params.data.target || 0;
+
+            if (!startPrice || !targetPrice) return `<div style="width:100px; height:15px; background: #f5f5f5;"></div>`;
+
+            let progress = ((currentPrice - startPrice) / (targetPrice - startPrice)) * 100;
+            progress = Math.max(0, Math.min(100, progress));  // Keep within 0-100%
+
+             return `
+                <div style="position: relative; width: 100px; height: 15px; background: #ddd; border-radius: 3px;">
+                <div style="width: ${progress}%; height: 100%; background: ${progress >= 100 ? 'green' : 'blue'};"></div>
+                </div>
+             `;
+        }
+
+
+        function updateGroupDropdown(rowData) {
+            const groupSet = new Set();
+
+            rowData.forEach(row => {
+                if (row.path?.[0]) groupSet.add(row.path[0]);
+            });
+
+            const dropdown = $('#alertGroup');
+            dropdown.empty();
+
+            Array.from(groupSet).sort().forEach(group =>
+                dropdown.append(new Option(group, group))
+            );
+
+            dropdown.append(new Option("Unassigned", "Unassigned")); // optional default
+
+            dropdown.select2({
+                tags: true, // ✅ allow free input
+                width: '150px',
+                dropdownAutoWidth: true
+            });
+        }
+
+        function setGroupAlert(groupName) {
+          const node = findGroupNode(groupName);
+          const operator = node.data.operator;
+          const target = parseFloat(node.data.target);
+
+          const payload = { operator, target, status: "Active" };
+          $.post(`/group-targets/${groupName}`, JSON.stringify(payload), () => {
+            fetchGroupTargets();
+          });
+        }
+
+        function ackGroupAlert(groupName) {
+          const current = groupTargets[groupName];
+          $.post(`/group-targets/${groupName}`, JSON.stringify({ ...current, status: "Acknowledged" }), () => {
+            fetchGroupTargets();
+          });
+        }
+
+        function resetGroupAlert(groupName) {
+          const current = groupTargets[groupName];
+          $.post(`/group-targets/${groupName}`, JSON.stringify({ ...current, status: "Pending" }), () => {
+            fetchGroupTargets();
+          });
+        }
+
+        function findGroupNode(groupName) {
+          let result = null;
+          gridOptions.api.forEachNode(node => {
+            if (node.group && node.key === groupName) result = node;
+          });
+          return result;
+        }
+
+        function fetchGroupTargets() {
+          $.get("/group-targets", function(data) {
+            groupTargets = data;
+            gridOptions.api.refreshCells({ force: true });
+          });
+        }
+
+
+        $(document).ready(() => {
+            fetchSymbols();
+            fetchAlerts();
+            setInterval(checkTriggers, 2000);
+        });
+        console.log(7)
+    </script>
+
+</body>
+</html>
