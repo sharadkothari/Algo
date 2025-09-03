@@ -2,18 +2,26 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from urllib.parse import unquote
 from common.config import get_redis_client
-import datetime, time, threading, uuid, json, re
+import datetime,  uuid, json, re
 from common.trading_hours import TradingHours
 from common.my_logger import logger
 from pathlib import Path
+from typing import Optional, Literal
 from pydantic import BaseModel
-from typing import Literal
+
+class GroupTarget(BaseModel):
+    operator: Optional[Literal["<", "=", ">"]] = None
+    target: Optional[float] = None
+    status: Literal["Pending", "Active", "Triggered", "Acknowledged"]
+
 
 router = APIRouter(prefix="/alerts2", tags=["alerts-api"])
 redis_client = get_redis_client()
 alerts_key = "alerts_spread"
 tree_alerts_key = "tree_alerts"
 group_alerts_key = "group_alerts"
+group_leaves_prefix = "group_leaves:"
+groups_order_key = "groups_order"
 trading_hour = TradingHours(start_buffer=60)
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -98,16 +106,94 @@ def add_tree_alert(data: dict):
     redis_client.hset(tree_alerts_key, alert_id, json.dumps(alert_data))
     return {"id": alert_id}
 
+
 @router.get("/tree")
 def get_tree_alerts():
     alerts_data = redis_client.hgetall(tree_alerts_key)
-    return {k: json.loads(v) for k, v in alerts_data.items()}
+    alerts = {k: json.loads(v) for k, v in alerts_data.items()}
+
+    group_targets_data = redis_client.hgetall(group_alerts_key)
+    group_targets = {k: json.loads(v) for k, v in group_targets_data.items()}
+
+    order = redis_client.lrange(groups_order_key, 0, -1)
+    ordered_groups = [g for g in order]
+    all_groups_set = set(group_targets.keys()) | {alert["path"][0] for alert in alerts.values() if "path" in alert}
+    missing = sorted(all_groups_set - set(ordered_groups))
+    ordered_groups.extend(missing)
+    all_groups = ordered_groups
+
+    result = []
+    for group in all_groups:
+        # Build group row
+        target_data = group_targets.get(group, {"operator": "", "target": None, "status": "Pending"})
+        group_row = {
+            "id": f"group-{group}",
+            "groupName": group,
+            "operator": target_data.get("operator", ""),
+            "target": target_data.get("target"),
+            "status": target_data.get("status", "Pending"),
+            "path": [group],
+            "symbol": group,  # For auto-group display
+        }
+        result.append(group_row)
+
+        # Get ordered leaves
+        order_key = f"{group_leaves_prefix}{group}"
+        ids = redis_client.lrange(order_key, 0, -1)
+        group_leaves = []
+        seen_ids = set()
+        for id_b in ids:
+            aid = id_b
+            if aid in alerts and aid not in seen_ids:
+                leaf = alerts[aid]
+                leaf["id"] = aid  # Ensure ID is set
+                group_leaves.append(leaf)
+                seen_ids.add(aid)
+
+        # Append any unsorted/missing leaves (fallback), sort by timestamp, and add to list
+        missing = [alert for aid, alert in alerts.items() if alert["path"][0] == group and aid not in seen_ids]
+        if missing:
+            missing.sort(key=lambda a: a.get("timestamp", ""))
+            group_leaves.extend(missing)
+            pipe = redis_client.pipeline()
+            for m in missing:
+                pipe.rpush(order_key, m["id"])
+            pipe.execute()
+
+        result.extend(group_leaves)
+
+    return result
 
 @router.delete("/tree/{alert_id}")
 def delete_tree_alert(alert_id: str):
-    if redis_client.hdel(tree_alerts_key, alert_id):
-        return {"message": "Tree alert deleted"}
-    raise HTTPException(status_code=404, detail="Alert not found")
+    alert_json = redis_client.hget(tree_alerts_key, alert_id)
+    if not alert_json:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    alert = json.loads(alert_json)
+    group = alert["path"][0]
+    redis_client.lrem(f"{group_leaves_prefix}{group}", 0, alert_id)
+    redis_client.hdel(tree_alerts_key, alert_id)
+    return {"message": "Tree alert deleted"}
+
+class ReorderPayload(BaseModel):
+    ordered_ids: list[str]
+
+@router.post("/group/{group}/reorder")
+def reorder_group(group: str, payload: ReorderPayload):
+    ordered_ids = payload.ordered_ids
+    # Validate (optional, for safety)
+    pipe = redis_client.pipeline()
+    pipe.delete(f"{group_leaves_prefix}{group}")
+    for aid in ordered_ids:
+        alert_json = redis_client.hget(tree_alerts_key, aid)
+        if not alert_json:
+            continue  # Skip invalid
+        alert = json.loads(alert_json)
+        if alert["path"][0] != group:
+            continue  # Wrong group
+        pipe.rpush(f"{group_leaves_prefix}{group}", aid)
+    pipe.execute()
+    return {"message": "Order updated"}
 
 @router.post("/tree/{alert_id}/ack")
 def acknowledge_tree_alert(alert_id: str):
@@ -132,13 +218,51 @@ def reset_tree_alert(alert_id: str):
     redis_client.hset(tree_alerts_key, alert_id, json.dumps(alert))
     return {"message": "Alert reset to Active"}
 
+@router.post("/tree-lite")
+def add_tree_leaf(data: dict):
+    required_keys = {'symbol', 'qty', 'path'}
+    if not required_keys.issubset(data.keys()):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    alert_id = str(uuid.uuid4())
+    symbol = data['symbol'].upper().strip()
+    qty = data.get("qty", 1)
+
+    tick_data = redis_client.hget(get_redis_key(), symbol)
+    if not tick_data:
+        raise HTTPException(status_code=404, detail=f"Symbol not found: {symbol}")
+
+    last_price = json.loads(tick_data).get("last_price", 0)
+
+    alert_data = {
+        "id": alert_id,
+        "symbol": symbol,
+        "qty": qty,
+        "path": data["path"],
+        "last_price": last_price,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+
+    redis_client.hset(tree_alerts_key, alert_id, json.dumps(alert_data))
+    group = alert_data["path"][0]
+    redis_client.rpush(f"{group_leaves_prefix}{group}", alert_id)
+    return {"id": alert_id}
+
+class QtyUpdate(BaseModel):
+    qty: int
+
+@router.put("/tree/{alert_id}/qty")
+def update_tree_qty(alert_id: str, payload: QtyUpdate):
+    alert_json = redis_client.hget(tree_alerts_key, alert_id)
+    if not alert_json:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    alert = json.loads(alert_json)
+    alert["qty"] = payload.qty
+    alert["timestamp"] = datetime.datetime.now().isoformat()
+    redis_client.hset(tree_alerts_key, alert_id, json.dumps(alert))
+    return {"message": "Qty updated", "qty": payload.qty}
 
 # ---------- Group Alerts ----------
-
-class GroupTarget(BaseModel):
-    operator: Literal["<", ">"]
-    target: float
-    status: Literal["Pending", "Active", "Triggered", "Acknowledged"]
 
 
 @router.get("/group-targets")
@@ -146,9 +270,7 @@ def get_group_targets():
     all_data = redis_client.hgetall(group_alerts_key)
     results = {}
 
-    for group_name_bytes, value_bytes in all_data.items():
-        group_name = group_name_bytes.decode()
-        value = value_bytes.decode()
+    for group_name, value in all_data.items():
         try:
             results[group_name] = json.loads(value)
         except json.JSONDecodeError:
@@ -167,6 +289,8 @@ def get_group_target(group: str):
 
 @router.post("/group-targets/{group}")
 def set_group_target(group: str, target: GroupTarget):
+    if not redis_client.lpos(groups_order_key, group):
+        redis_client.rpush(groups_order_key, group)
     redis_client.hset(group_alerts_key, group, target.json())
     return {"message": "Group target set", "group": group, "data": target}
 
@@ -174,78 +298,17 @@ def set_group_target(group: str, target: GroupTarget):
 @router.delete("/group-targets/{group}")
 def delete_group_target(group: str):
     redis_client.hdel(group_alerts_key, group)
+    redis_client.delete(f"{group_leaves_prefix}{group}")
+    redis_client.lrem(groups_order_key, 0, group)
     return {"message": "Group target deleted", "group": group}
 
+class ReorderGroupsPayload(BaseModel):
+    ordered_groups: list[str]
 
-# ---------- Background Monitor ----------
-def monitor_alerts():
-    while True:
-        # 1. Process Leaf Alerts
-        alerts_data = redis_client.hgetall(tree_alerts_key)
-
-        for alert_id, raw in alerts_data.items():
-            alert = json.loads(raw)
-
-            if alert.get("status") in ("Triggered", "Acknowledged"):
-                continue
-
-            symbol = alert.get("symbol")
-            if not symbol:
-                continue
-
-            tick = redis_client.hget(get_redis_key(), symbol)
-            if not tick:
-                continue
-
-            tick_data = json.loads(tick)
-            last_price = tick_data.get("last_price", 0)
-            alert["last_price"] = last_price
-
-            if OPERATORS[alert["operator"]](last_price, alert["target"]):
-                alert["status"] = "Triggered"
-
-            redis_client.hset(tree_alerts_key, alert_id, json.dumps(alert))
-
-        # 2. Process Group Alerts
-        group_keys = redis_client.hkeys(group_alerts_key)
-
-        for group_name in group_keys:
-
-            raw = redis_client.hget(group_alerts_key, group_name)
-            if not raw:
-                continue
-
-            group_alert = json.loads(raw)
-
-            if group_alert.get("status") in ("Triggered", "Acknowledged"):
-                continue
-
-            total = 0
-            alerts_data = redis_client.hgetall(tree_alerts_key)
-
-            for alert_id, alert_json in alerts_data.items():
-                alert = json.loads(alert_json)
-                if alert.get("path", [])[0] == group_name:
-                    qty = float(alert.get("qty", 0))
-                    price = float(alert.get("last_price", 0))
-                    total += qty * price
-
-            operator = group_alert.get("operator")
-            target = group_alert.get("target")
-
-            if operator and target and OPERATORS[operator](total, target):
-                group_alert["status"] = "Triggered"
-
-            redis_client.hset(group_alerts_key, group_name, json.dumps(group_alert))
-
-        # Sleep logic based on trading hours
-        if not trading_hour.is_open():
-            seconds_until_open = trading_hour.time_until_next_open().total_seconds()
-            logger.info(f"[Alerts] Market closed. Sleeping for {seconds_until_open // 60:.1f} min.")
-            time.sleep(seconds_until_open)
-        else:
-            time.sleep(2)
-
-
-# Start background thread
-threading.Thread(target=monitor_alerts, daemon=True).start()
+@router.post("/groups/reorder")
+def reorder_groups(payload: ReorderGroupsPayload):
+    ordered_groups = payload.ordered_groups
+    redis_client.delete(groups_order_key)
+    for group in ordered_groups:
+        redis_client.rpush(groups_order_key, group)
+    return {"message": "Groups order updated"}
