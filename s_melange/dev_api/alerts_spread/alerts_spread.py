@@ -261,12 +261,17 @@ def add_tree_leaf(data: dict):
     }
 
     group = data["path"][0]
-    if group not in alerts_data["groups"]:
+    is_new_group = group not in alerts_data["groups"]
+    if is_new_group:
         alerts_data["groups"][group] = {"target": {"operator": "", "target": None, "status": "Pending"}, "leaves_order": [], "leaves": {}}
         if group not in alerts_data["groups_order"]:
             alerts_data["groups_order"].append(group)
     alerts_data["groups"][group]["leaves"][alert_id] = alert_data
     alerts_data["groups"][group]["leaves_order"].append(alert_id)
+    if is_new_group:
+        current_total = qty * last_price
+        target_value = current_total + 1 if current_total > 0 else 1
+        alerts_data["groups"][group]["target"] = {"operator": "=", "target": target_value, "status": "Active"}
     save_alerts_data(alerts_data)
     return {"id": alert_id}
 
