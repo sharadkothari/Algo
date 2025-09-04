@@ -10,8 +10,8 @@ from typing import Optional, Literal
 from pydantic import BaseModel
 
 class GroupTarget(BaseModel):
-    operator: Optional[Literal["<", "=", ">"]] = None
-    target: Optional[float] = None
+    operator: Optional[Literal["<", "=", ">", "Range"]] = None
+    target: Optional[str] = None  # CHANGED: From float to str
     status: Literal["Pending", "Active", "Triggered", "Acknowledged"]
 
 router = APIRouter(prefix="/alerts2", tags=["alerts-api"])
@@ -98,7 +98,7 @@ def add_tree_alert(data: dict):
         "symbol": symbol,
         "qty": qty,
         "operator": data["operator"],
-        "target": float(data["target"]),
+        "target": data["target"],  # CHANGED: Keep as provided (str or float, but will be str)
         "status": "Active",
         "path": data["path"],
         "last_price": last_price,
@@ -271,7 +271,7 @@ def add_tree_leaf(data: dict):
     if is_new_group:
         current_total = qty * last_price
         target_value = current_total + 1 if current_total > 0 else 1
-        alerts_data["groups"][group]["target"] = {"operator": "=", "target": target_value, "status": "Active"}
+        alerts_data["groups"][group]["target"] = {"operator": "=", "target": str(target_value), "status": "Active"}  # CHANGED: target as str
     save_alerts_data(alerts_data)
     return {"id": alert_id}
 
@@ -295,11 +295,13 @@ def update_tree_qty(alert_id: str, payload: QtyUpdate):
 
 # ---------- Group Alerts ----------
 
+
 @router.get("/group-targets")
 def get_group_targets():
     alerts_data = load_alerts_data()
     results = {group: group_data["target"] for group, group_data in alerts_data["groups"].items()}
     return results
+
 
 @router.get("/group-targets/{group}")
 def get_group_target(group: str):
@@ -307,6 +309,7 @@ def get_group_target(group: str):
     if group not in alerts_data["groups"]:
         return JSONResponse(status_code=404, content={"message": "Group target not found"})
     return alerts_data["groups"][group]["target"]
+
 
 @router.post("/group-targets/{group}")
 def set_group_target(group: str, target: GroupTarget):
@@ -318,6 +321,7 @@ def set_group_target(group: str, target: GroupTarget):
     alerts_data["groups"][group]["target"] = target.dict()
     save_alerts_data(alerts_data)
     return {"message": "Group target set", "group": group, "data": target}
+
 
 @router.delete("/group-targets/{group}")
 def delete_group_target(group: str):
