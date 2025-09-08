@@ -24,4 +24,4 @@ def get_token(client_ids=('fa97273', 'fa222351')):
 
 
 if __name__ == "__main__":
-    get_token(['fa97273'])
+    get_token(['fa97273', 'fa222351'])

@@ -23,4 +23,4 @@ def get_token(client_ids=('ym3006', 'rs5756', 'mim066')):
 
 
 if __name__ == "__main__":
-    get_token(['ym3006'])
+    get_token(['rs5756', 'ym3006', 'mim066'])

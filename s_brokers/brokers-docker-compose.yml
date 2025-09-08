@@ -9,6 +9,7 @@ services:
     volumes:
       - ./api_tokens:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: ["python", "api_token.py"]
 
   brokers_bypass:
@@ -19,5 +20,6 @@ services:
     volumes:
       - ./bypass:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: ["python", "bypass.py"]
 

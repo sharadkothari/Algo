@@ -9,6 +9,7 @@ services:
     volumes:
       - ./ticks:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: ["python", "ticks.py"]
 
   
@@ -20,6 +21,7 @@ services:
     volumes:
       - ./candles:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: ["python","candles.py"]
 
 
@@ -31,5 +33,6 @@ services:
     volumes:
       - ./dynamic_candles:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: ["python", "dynamic_candles.py"]
 

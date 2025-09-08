@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 class GroupTarget(BaseModel):
     operator: Optional[Literal["<", "=", ">", "Range"]] = None
-    target: Optional[str] = None  # CHANGED: From float to str
+    target: Optional[str] = None
     status: Literal["Pending", "Active", "Triggered", "Acknowledged"]
 
 router = APIRouter(prefix="/alerts2", tags=["alerts-api"])
@@ -98,7 +98,7 @@ def add_tree_alert(data: dict):
         "symbol": symbol,
         "qty": qty,
         "operator": data["operator"],
-        "target": data["target"],  # CHANGED: Keep as provided (str or float, but will be str)
+        "target": data["target"],
         "status": "Active",
         "path": data["path"],
         "last_price": last_price,
@@ -152,6 +152,9 @@ def get_tree_alerts():
             if aid in leaves and aid not in seen_ids:
                 leaf = leaves[aid].copy()
                 leaf["id"] = aid  # Ensure ID is set
+                leaf["operator"] = leaf.get("operator", "") # ADDED: Default if not set
+                leaf["target"] = leaf.get("target")
+                leaf["status"] = leaf.get("status", "Pending")
                 group_leaves.append(leaf)
                 seen_ids.add(aid)
 
@@ -257,7 +260,10 @@ def add_tree_leaf(data: dict):
         "qty": qty,
         "path": data["path"],
         "last_price": last_price,
-        "timestamp": datetime.datetime.now().isoformat()
+        "timestamp": datetime.datetime.now().isoformat(),
+        "operator": "", # ADDED: Default for leaf
+        "target": None,
+        "status": "Pending"
     }
 
     group = data["path"][0]
@@ -271,7 +277,7 @@ def add_tree_leaf(data: dict):
     if is_new_group:
         current_total = qty * last_price
         target_value = current_total + 1 if current_total > 0 else 1
-        alerts_data["groups"][group]["target"] = {"operator": "=", "target": str(target_value), "status": "Active"}  # CHANGED: target as str
+        alerts_data["groups"][group]["target"] = {"operator": "=", "target": str(target_value), "status": "Active"}
     save_alerts_data(alerts_data)
     return {"id": alert_id}
 
@@ -293,8 +299,24 @@ def update_tree_qty(alert_id: str, payload: QtyUpdate):
     save_alerts_data(alerts_data)
     return {"message": "Qty updated", "qty": payload.qty}
 
-# ---------- Group Alerts ----------
+# ADDED: Endpoint for leaf target
+@router.post("/tree/{alert_id}/target")
+def set_leaf_target(alert_id: str, target: GroupTarget):
+    alerts_data = load_alerts_data()
+    found = False
+    for group_data in alerts_data["groups"].values():
+        if alert_id in group_data["leaves"]:
+            group_data["leaves"][alert_id]["operator"] = target.operator
+            group_data["leaves"][alert_id]["target"] = target.target
+            group_data["leaves"][alert_id]["status"] = target.status
+            found = True
+            break
+    if not found:
+        raise HTTPException(status_code=404, detail="Leaf not found")
+    save_alerts_data(alerts_data)
+    return {"message": "Leaf target set"}
 
+# ---------- Group Alerts ----------
 
 @router.get("/group-targets")
 def get_group_targets():

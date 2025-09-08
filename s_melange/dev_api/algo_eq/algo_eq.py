@@ -8,13 +8,12 @@ r = get_redis_client_v2(decode=False)
 
 @router.get("/orderbook")
 def get_orderbook():
-    return r.json().get("algo-eq:orderbook:latest")
+    compressed =r.get("algo-eq:orderbook:latest")
+    return Response(content=compressed, media_type="application/json", headers={"Content-Encoding": "gzip"})
 
 @router.get("/symbolstate")
 def get_symbolstate():
     compressed = r.get("algo-eq:symbolstate:latest")
-    # data = gzip.decompress(compressed)
-    # return json.loads(data.decode('utf-8'))
     return Response(content=compressed, media_type="application/json", headers={"Content-Encoding": "gzip"})
 
 @router.get("/overallmtm")

@@ -94,4 +94,4 @@ def get_token(client_ids=('sivdu', 'ylcgn')):
 
 
 if __name__ == '__main__':
-    get_token()
+    get_token(['sivdu', 'ylcgn'])

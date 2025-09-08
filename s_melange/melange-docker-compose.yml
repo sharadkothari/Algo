@@ -9,6 +9,7 @@ services:
     volumes:
       - ./service_status:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: ["python", "service_status.py"]
 
   melange_api_gateway:
@@ -20,6 +21,7 @@ services:
     volumes:
       - ./api_gateway:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
       - /var/run/docker.sock:/var/run/docker.sock
     command: ["python", "start.py"]
 
@@ -31,6 +33,7 @@ services:
     volumes:
       - ./docker_scheduler:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
     command: [ "python", "docker_scheduler.py" ]
@@ -45,4 +48,5 @@ services:
     volumes:
       - ./dev_api:/app
       - ../common:/app/common
+      - ../common_library:/app/common_library
     command: [ "python", "start.py" ]
