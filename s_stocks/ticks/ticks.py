@@ -16,6 +16,7 @@ import sys
 from collections import deque
 from pathlib import Path
 from common.base_service import BaseService
+from common_library.config.redis_config import get_redis_client
 
 with open(data_dir / f'brokers.json', 'r') as f:
     broker_data = json.loads(f.read())
@@ -32,9 +33,12 @@ class KiteSocket(BaseService):
         e = Encrypt(client_id)
         logger.info(f'initializing kite socket: {client_id}')
         self.inst_symbol_dict = None
+        self.eq_symbol_set = set()
         self.client_id = client_id
         self.api_key = e.decrypt(broker_data[client_id]['api_key'])
         self.redis = redis.Redis(host=redis_host, port=redis_port, db=redis_db, decode_responses=True)
+        self.redis = get_redis_client(port_ix=0)
+        self.redis_1 = get_redis_client(port_ix=1)
         self.trading_hour = TradingHours(start_buffer=60)
         # self.rp = self.redis_client.pipeline()
         self.kws = None  # WebSocket instance
@@ -194,14 +198,18 @@ class KiteSocket(BaseService):
             self.kws_closed_event.wait(timeout=10)
         self.is_running = False
         self.inst_symbol_dict = None
+        self.eq_symbol_set = set()
         self.kws = None
 
     def get_inst(self):
+        return self.get_inst_derivative() | self.get_inst_eq()
+
+    def get_inst_derivative(self):
         try:
             df_raw = pd.DataFrame(self.kite.instruments())
             logger.info(f"Downloaded {len(df_raw)} kite instruments")
         except Exception as e:
-            logger.info(f"Error fetching instruments: {e}")
+            logger.info(f"Error fetching instruments: {e }")
             return {}
         else:
             idx_symbol = ["NIFTY 50", "SENSEX", "NIFTY BANK", "INDIA VIX"]
@@ -219,6 +227,15 @@ class KiteSocket(BaseService):
             df_dict = df_concat.set_index('instrument_token')['symbol'].to_dict()
             return df_dict
 
+    def get_inst_eq(self):
+        data = self.redis_1.hgetall("scrips_nifty750")
+        inst_eq = {}
+        for k, v in data.items():
+            symbol = f"NSE:{k}"
+            self.eq_symbol_set.add(symbol)
+            inst_eq[int(v)] = symbol
+        logger.info(f"Loaded {len(inst_eq)} equity symbols")
+        return inst_eq
 
 if __name__ == "__main__":
     kq = KiteSocket()

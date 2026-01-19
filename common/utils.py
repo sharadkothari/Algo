@@ -53,9 +53,12 @@ class Encrypt:
         return base64.urlsafe_b64encode(encrypted_bytes).decode()
 
     def decrypt(self, data: str) -> str:
-        encrypted_bytes = base64.urlsafe_b64decode(data.encode())
-        extended_key = (self.key * (len(encrypted_bytes) // len(self.key) + 1))[:len(encrypted_bytes)]
-        return "".join(chr(e ^ ord(k)) for e, k in zip(encrypted_bytes, extended_key))
+        if data is not None:
+            encrypted_bytes = base64.urlsafe_b64decode(data.encode())
+            extended_key = (self.key * (len(encrypted_bytes) // len(self.key) + 1))[:len(encrypted_bytes)]
+            return "".join(chr(e ^ ord(k)) for e, k in zip(encrypted_bytes, extended_key))
+        else:
+            return ""
 
 
 class TimeCalc:
@@ -73,7 +76,9 @@ class TimeCalc:
 
 
 if __name__ == "__main__":
-    #e = Encrypt("YLCGN")
-    #print(e.encrypt("iGo1ofkqrrKkfKD7oT0aHvsP0uka"))
-    #print(e.encrypt("Kotak@1"))
-    get_ngrok_url()
+    e = Encrypt("YL6GN")
+    print(e.encrypt("cd7b3e73-cdcb-4d5b-b51f-553c6d749653"))
+    print(e.encrypt("+919716000025"))
+    print(e.encrypt("YL6GN"))
+    print(e.encrypt("C2ETBVULDFSPV27OU6U4SJNMUA"))
+    print(e.encrypt("691025"))

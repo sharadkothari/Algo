@@ -49,6 +49,10 @@ class Candles(BaseService):
 
     def process_tick(self, tick):
         for symbol, symbol_tick in tick.items():
+
+            if not symbol.startswith(('NFO', 'BFO')) and symbol_tick.get('tradable', True):
+                continue
+
             timestamp_value = symbol_tick.get(self.timestamp_field)
             if not timestamp_value:
                 continue

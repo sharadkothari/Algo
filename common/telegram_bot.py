@@ -183,5 +183,6 @@ class TelegramBotStocks(TelegramBot):
 
 
 if __name__ == "__main__":
-    tbot = TelegramBotStocks(send_only=True)
-    tbot.send('123')
+    import time
+    tbot = TelegramBotService(send_only=True)
+

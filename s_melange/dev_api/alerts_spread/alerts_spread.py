@@ -6,7 +6,7 @@ import datetime, uuid, json, re
 from common.trading_hours import TradingHours
 from common.my_logger import logger
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict, Any
 from pydantic import BaseModel
 
 class GroupTarget(BaseModel):
@@ -45,25 +45,49 @@ def play_alert():
     return FileResponse(BASE_DIR / "alert.mp3", media_type='audio/mp3')
 
 @router.get("/symbols")
-def get_symbols():
-    symbols = redis_client.hkeys(get_redis_key())
-    exchanges = {}
-    for symbol in symbols:
-        if ":" in symbol:
-            exchange, sym = symbol.split(":", 1)
-            if exchange not in exchanges:
-                exchanges[exchange] = {}
-            if exchange in ("NSE", "BSE"):
-                exchanges[exchange].setdefault("symbols", []).append(sym)
+def get_symbols() -> Dict[str, Any]:
+    redis_key = get_redis_key()
+    # All keys & values will already be decoded (decode_responses=True)
+    raw_map = redis_client.hgetall(redis_key)
+
+    exchanges: Dict[str, Any] = {}
+
+    for field, value_str in raw_map.items():
+        try:
+            value = json.loads(value_str) if value_str else {}
+            tradable = bool(value.get("tradable", False))
+        except Exception as e:
+            logger.warning(f"Skipping field {field!r} due to JSON error: {e}")
+            tradable = False
+
+        if ":" not in field:
+            continue
+
+        exchange, sym = field.split(":", 1)
+
+        # NSE/BSE logic — if tradable, classify under 'EQ'
+        if exchange in ("NSE", "BSE"):
+            key = f"EQ:{exchange}" if tradable else exchange
+            exchanges.setdefault(key, {}).setdefault("symbols", []).append(sym)
+            continue
+
+        # Other exchanges (options, futures, etc.)
+        try:
+            match = re.match(r"^([A-Z]+)(\d.{4})(.*)(..)$", sym)
+            if not match:
+                exchanges.setdefault(exchange, {}).setdefault("symbols_unparsed", []).append(sym)
                 continue
-            try:
-                match = re.match(r"^([A-Z]+)(\d.{4})(.*)(..)$", sym)
-                if not match:
-                    continue
-                symbol_part, exp_str, strike, opt_type = match.groups()
-                exchanges[exchange].setdefault(symbol_part, {}).setdefault(exp_str, {}).setdefault(strike, []).append(opt_type)
-            except Exception as e:
-                logger.warning(f"Error parsing {sym}: {e}")
+
+            symbol_part, exp_str, strike, opt_type = match.groups()
+            exchanges.setdefault(exchange, {}) \
+                     .setdefault(symbol_part, {}) \
+                     .setdefault(exp_str, {}) \
+                     .setdefault(strike, []) \
+                     .append(opt_type)
+        except Exception as e:
+            logger.warning(f"Error parsing {sym}: {e}")
+            exchanges.setdefault(exchange, {}).setdefault("symbols_unparsed", []).append(sym)
+
     return exchanges
 
 @router.get("/tick-data/{symbol}")
@@ -128,6 +152,9 @@ def get_tree_alerts():
         changed = True
 
     result = []
+    redis_key = get_redis_key()
+    now_iso = datetime.datetime.now().isoformat()
+
     for group in ordered_groups:
         if group not in alerts_data["groups"]:
             continue
@@ -136,41 +163,45 @@ def get_tree_alerts():
         group_row = {
             "id": f"group-{group}",
             "groupName": group,
+            "symbol": group,  # ADDED: Set symbol to group name for autoGroupColumnDef display
             "operator": target_data.get("operator", ""),
             "target": target_data.get("target"),
             "status": target_data.get("status", "Pending"),
-            "path": [group],
-            "symbol": group,  # For auto-group display
+            "path": [group],  # For treeData structure
+            # Note: last_price for group is calculated in frontend valueGetter
+            # timestamp for group will be max from leaves in frontend
         }
         result.append(group_row)
 
-        leaves_order = group_data.get("leaves_order", [])
-        leaves = group_data.get("leaves", {})
-        group_leaves = []
-        seen_ids = set()
-        for aid in leaves_order:
-            if aid in leaves and aid not in seen_ids:
-                leaf = leaves[aid].copy()
-                leaf["id"] = aid  # Ensure ID is set
-                leaf["operator"] = leaf.get("operator", "") # ADDED: Default if not set
-                leaf["target"] = leaf.get("target")
-                leaf["status"] = leaf.get("status", "Pending")
-                group_leaves.append(leaf)
-                seen_ids.add(aid)
+        # Build leaves with current prices/timestamps
+        for leaf_id in group_data.get("leaves_order", []):
+            if leaf_id not in group_data["leaves"]:
+                continue
+            leaf_data = group_data["leaves"][leaf_id].copy()  # Avoid modifying original
+            symbol = leaf_data["symbol"]
 
-        # Append any unsorted/missing leaves (fallback), sort by timestamp, and add to list
-        missing = [leaves[aid].copy() for aid in leaves if aid not in seen_ids and leaves[aid]["path"][0] == group]
-        if missing:
-            missing.sort(key=lambda a: a.get("timestamp", ""))
-            group_leaves.extend(missing)
-            group_data["leaves_order"] = [leaf["id"] for leaf in group_leaves]
-            changed = True
+            # Fetch current tick data
+            tick_str = redis_client.hget(redis_key, symbol)
+            if tick_str:
+                try:
+                    tick = json.loads(tick_str)
+                    leaf_data["last_price"] = tick.get("last_price", leaf_data.get("last_price", 0))
+                    # Repurpose 'timestamp' for display as current price time (matches WS behavior)
+                    leaf_data["timestamp"] = tick.get("exchange_timestamp", leaf_data["timestamp"])
+                except (json.JSONDecodeError, KeyError) as e:
+                    logger.warning(f"Error updating tick for {symbol}: {e}")
+                    # Fallback: use now if no exchange_timestamp
+                    leaf_data["timestamp"] = tick.get("exchange_timestamp", now_iso)
+            else:
+                # No tick data: use now for timestamp fallback
+                leaf_data["timestamp"] = now_iso
 
-        result.extend(group_leaves)
+            # Ensure path is set for treeData
+            leaf_data["path"] = [group, symbol]
+            result.append(leaf_data)
 
     if changed:
         save_alerts_data(alerts_data)
-
     return result
 
 @router.delete("/tree/{alert_id}")
@@ -245,18 +276,37 @@ def add_tree_leaf(data: dict):
 
     alerts_data = load_alerts_data()
     alert_id = str(uuid.uuid4())
-    symbol = data['symbol'].upper().strip()
+    raw_symbol = data['symbol'].upper().strip()
+
+    # If UI sends something like "EQ:NSE:RELIANCE" convert to "NSE:RELIANCE"
+    redis_field = raw_symbol
+    try:
+        parts = raw_symbol.split(":")
+        if parts[0] == "EQ" and len(parts) >= 3:
+            # EQ:{Exchange}:{SYMBOL...} -> {Exchange}:{SYMBOL...}
+            exchange = parts[1]
+            sym = ":".join(parts[2:])
+            redis_field = f"{exchange}:{sym}"
+    except Exception:
+        # keep raw_symbol if anything unexpected happens
+        redis_field = raw_symbol
+
     qty = data.get("qty", 1)
 
-    tick_data = redis_client.hget(get_redis_key(), symbol)
+    # Try to fetch tick data; fallback to raw_symbol if redis_field not found
+    tick_data = redis_client.hget(get_redis_key(), redis_field)
+    if not tick_data and redis_field != raw_symbol:
+        # try fallback (in case UI used a different format)
+        tick_data = redis_client.hget(get_redis_key(), raw_symbol)
+
     if not tick_data:
-        raise HTTPException(status_code=404, detail=f"Symbol not found: {symbol}")
+        raise HTTPException(status_code=404, detail=f"Symbol not found: {raw_symbol}")
 
     last_price = json.loads(tick_data).get("last_price", 0)
 
     alert_data = {
         "id": alert_id,
-        "symbol": symbol,
+        "symbol": raw_symbol,
         "qty": qty,
         "path": data["path"],
         "last_price": last_price,
@@ -282,7 +332,7 @@ def add_tree_leaf(data: dict):
     return {"id": alert_id}
 
 class QtyUpdate(BaseModel):
-    qty: int
+    qty: float
 
 @router.put("/tree/{alert_id}/qty")
 def update_tree_qty(alert_id: str, payload: QtyUpdate):

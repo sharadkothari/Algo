@@ -10,6 +10,7 @@ class Chart:
     def __init__(self, data_loader):
         self.data_loader = data_loader
         self.spread: Spread = self.data_loader.spread
+        self._pivot_cache = None
 
     def left_axis(self):
         axis_list = []
@@ -31,9 +32,8 @@ class Chart:
                     hovertemplate='%{y:.1f} <br>%{customdata} <br>'))
         return axis_list
 
-    def right_axis(self):
+    def right_axis(self, udf):
         axis_list = []
-        udf = self.spread.get_underlying_quote(uix=self.data_loader.uix)
         axis_list.append(go.Scatter(x=udf['date'], y=udf['close'].expanding().mean(), mode='lines',
                                     line=dict(color="#A9A9A9", dash='dot'), name='avg', hoverinfo='none'))
         axis_list.append(go.Scatter(x=udf['date'], y=udf['close'], mode='lines', line=dict(color="#A9A9A9"),
@@ -108,6 +108,72 @@ class Chart:
             vertical_line_time = pd.Timestamp(f'{self.data_loader.date} {self.data_loader.track_time_start}')
             fig.add_vline(x=vertical_line_time, line=dict(color="red", width=3, dash="dash"))
 
+    def compute_rolling_pivot(self, udf, window_start="9:16", window_end="10:15"):
+
+        # filter first-window data
+        date = self.spread.get_date()
+        start_time = pd.to_datetime(f"{date} {window_start}")
+        end_time = pd.to_datetime(f"{date} {window_end}")
+
+        last_ts = udf["date"].iloc[-1]
+        if last_ts > end_time and self._pivot_cache is not None:
+            return self._pivot_cache
+
+        df = udf[(udf["date"] >= start_time) & (udf["date"] <= end_time)]
+
+        if df.empty:
+            return None  # no pivot
+
+        h = df["high"].max()
+        l = df["low"].min()
+        c = df["close"].iloc[-1]
+
+        pp = (h + l + c) / 3
+        r1 = 2 * pp - l
+        s1 = 2 * pp - h
+        r2 = pp + (h - l)
+        s2 = pp - (h - l)
+
+        pivot =  {
+            "PP": pp, "R1": r1, "S1": s1, "R2": r2, "S2": s2,
+            "H": h, "L": l, "C": c,
+        }
+
+        if last_ts >= end_time:
+            self._pivot_cache = pivot
+
+        return pivot
+
+    def pivot_lines(self, udf):
+
+        pivot = self.compute_rolling_pivot(udf)
+        traces = []
+
+        if pivot is None:
+            return []
+
+        colors = {
+            "PP": "#8B008B",  # dark magenta
+            "R1": "#FF4500",
+            "S1": "#1E90FF",
+            "R2": "#B22222",
+            "S2": "#4169E1",
+        }
+
+        for key, val in pivot.items():
+            if key in ["PP", "R1", "S1", "R2", "S2"]:
+                traces.append(go.Scatter(
+                    x=[udf['date'].iloc[0], udf['date'].iloc[-1]],
+                    y=[val, val],
+                    mode='lines',
+                    line=dict(color=colors[key], width=1.2, dash="dash"),
+                    name=f"pivot_{key}",
+                    hovertemplate=f"{key}: {val:.1f}<extra></extra>"
+                ))
+
+        return traces
+
+
     def plot(self):
 
         if self.data_loader.live and dt.datetime.now().time() < self.data_loader.th.start:
@@ -119,10 +185,14 @@ class Chart:
             fig.add_trace(left_axis, secondary_y=False)
             self.add_marker(fig, left_axis, secondary_y=False)
 
-        for i, right_axis in enumerate(self.right_axis()):
+        udf = self.spread.get_underlying_quote(uix=self.data_loader.uix)
+        for i, right_axis in enumerate(self.right_axis(udf = udf)):
             fig.add_trace(right_axis, secondary_y=True)
             if i == 1:
                 self.add_marker(fig, right_axis, secondary_y=True)
+
+        #for pivot_line in self.pivot_lines(udf=udf):
+        #    fig.add_trace(pivot_line, secondary_y=True)
 
         self.update_layout(fig)
         self.set_annotation(fig)

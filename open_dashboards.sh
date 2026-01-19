@@ -4,12 +4,13 @@
 DASHBOARDS=(
     "http://t5810/static/margin_book/"
     "http://t5810/static/position_book/"
-    "http://t5810/static/server_stats/"
-    "http://t5810/static/alerts/"
+    "http://web.t5810/alerts-tree/"
     "http://t5810/static/mtm_chart/"
     "http://u530/dashboard"
     "http://e6330/dashboard"
     "http://e6330-2/dashboard"
+    "http://web.t5810/streams?channel=India+Today"
+    "http://web.t5810/streams?channel=CNBC+TV18"
 )
 
 EDGE_BIN="/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"

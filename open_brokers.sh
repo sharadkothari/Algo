@@ -9,8 +9,8 @@ URLS=(
   "https://kite.zerodha.com/"
   "https://trade.shoonya.com/#/"
   "https://trade.shoonya.com/#/"
-  "https://ntrade.kotaksecurities.com/Login"
-  "https://ntrade.kotaksecurities.com/Login"
+  "https://neo.kotaksecurities.com/"
+  "https://neo.kotaksecurities.com/"
 )
 
 PROFILES=(

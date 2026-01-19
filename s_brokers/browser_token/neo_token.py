@@ -44,7 +44,7 @@ async def extract_token(playwright, client, profile):
         browser = await get_browser(playwright, temp_folder, profile)
         page = await browser.new_page()
         await page.route("**/*", handle_request)
-        await page.goto("https://ntrade.kotaksecurities.com/")
+        await page.goto("https://neo.kotaksecurities.com")
         await page.wait_for_load_state("networkidle", timeout=10000)
         await browser.close()
     except Exception as e:
@@ -94,4 +94,4 @@ def get_token(client_ids=('sivdu', 'ylcgn')):
 
 
 if __name__ == '__main__':
-    get_token(['sivdu', 'ylcgn'])
+    get_token(['sivdu'])

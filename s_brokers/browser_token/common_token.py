@@ -19,6 +19,7 @@ class CommonToken:
         self.browser_profiles = get_browser_profiles()
         self.extract_token()
 
+
     def store_token(self, client, token):
         e = Encrypt(client)
         self.r.expireat("browser_token", self.expiry_ts)

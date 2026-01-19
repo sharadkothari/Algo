@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from alerts_spread.alerts_spread import router as alerts_spread_router
 from algo_eq.algo_eq import  router as algo_eq_router
-
+import datetime as dt
 
 redis_task = None
 base_service = None
@@ -15,6 +15,7 @@ base_service = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global base_service
+    print(f">>> Lifespan startup at {dt.datetime.now().isoformat()}")
     logger.info("🚀 Starting Development Server")
 
     base_service = BaseService(app_name=Path(__file__).stem)

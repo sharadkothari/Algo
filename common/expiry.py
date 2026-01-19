@@ -73,12 +73,13 @@ class Expiry:
         holidays = np.array(self.holidays, dtype='datetime64[D]')
         return np.busday_offset(date, delta, roll='forward', holidays=holidays).astype('M8[D]').astype(datetime.date)
 
-    @staticmethod
-    def get_last_weekday(year, month, exp_weekday):
+    def get_last_weekday(self, year, month, exp_weekday):
         last_day = calendar.monthrange(year, month)[1]
         last_date = datetime.date(year, month, last_day)
         while last_date.weekday() != exp_weekday:
             last_date -= datetime.timedelta(days=1)
+        while last_date.strftime("%Y-%m-%d") in self.holidays or last_date.weekday() in (5, 6):
+            last_date -= datetime.timedelta(days=1)  # Move to previous business day
         return last_date
 
     def is_monthly_expiry(self, exp_date: datetime.date):
@@ -92,13 +93,21 @@ class Expiry:
         return self.get_expiry(last_weekday)
 
     def expand_exp_str(self, exp_str: str):
-        if exp_str[2:].isdigit():  #weekly expiry e.g.25529
-            return datetime.date(2000 + int(exp_str[:2]), int(exp_str[2]), int(exp_str[3:]))
-        else:  # monthly expiry
+        if exp_str[-3:].isalpha():
             date = datetime.datetime.strptime(exp_str + "01", "%y%b%d").date()
             return self.get_monthly_expiry(date)
 
+        year = 2000 + int(exp_str[:2])
+        day = int(exp_str[3:])
+        if exp_str[2].isdigit():  # Jan–Sep
+            month = int(exp_str[2])
+        else:
+            month = {"O": 10, "N": 11, "D": 12}[exp_str[2].upper()]
+        return datetime.date(year, month, day)
+
+
 
 if __name__ == "__main__":
-    e = Expiry("NN")
-    print(e.expand_exp_str(exp_str="25529"))
+    e = Expiry("SX")
+    print(e.get_exp_str(datetime.date(2025, 12, 24)))
+

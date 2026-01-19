@@ -6,6 +6,11 @@ from neo_token import get_token as get_neo_token
 from common.config import get_broker_ids
 from common.config import get_redis_client_v2
 import time
+from common.telegram_bot import TelegramBotService as TelegramBot
+
+tbot = TelegramBot(send_only=True)
+time.sleep(1)
+tbot.process_messages({"data": "/token"})
 
 
 def get_tokens(value):
