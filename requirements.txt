@@ -1,6 +1,6 @@
 # Core web frameworks
 fastapi~=0.110.0
-uvicorn[standard]~=0.34.0
+uvicorn[standard]~=0.40.0
 gunicorn~=23.0.0
 Flask<3.1.0
 

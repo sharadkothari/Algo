@@ -3,7 +3,7 @@ from common.expiry import Expiry
 from common.my_logger import logger
 from common.config import redis_host, redis_port, redis_db
 import json
-from common.trading_hours import TradingHours
+from common_library.trading.trading_hours import TradingHours
 import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 import signal

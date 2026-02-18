@@ -8,7 +8,7 @@ from common.config import data_dir, base_dir_prv, redis_host, redis_port, redis_
 import json
 import datetime
 from common.my_logger import logger
-from common.trading_hours import TradingHours
+from common_library.trading.trading_hours import TradingHours
 from common.telegram_bot import TelegramBotStocks
 from common.utils import Encrypt
 import os
@@ -81,9 +81,10 @@ class KiteSocket(BaseService):
             _ = ws
             self.last_tick_time = time.time()
             cur_tick = {self.inst_symbol_dict.get(tick["instrument_token"], "NA"): tick for tick in ticks}
+            # self.ticks |= cur_tick
             self.tick_dq.append(cur_tick)
             self.new_tick_event.set()
-            # self.ticks |= cur_tick
+
 
         def on_close(ws, code, reason):
             _ = code

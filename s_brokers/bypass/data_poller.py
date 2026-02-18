@@ -1,5 +1,5 @@
 from common.my_logger import logger
-from common.trading_hours import TradingHours
+from common_library.trading.trading_hours import TradingHours
 from common.config import get_redis_client_v2
 import asyncio
 import datetime

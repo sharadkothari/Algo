@@ -5,7 +5,7 @@ import time
 import redis
 from common.my_logger import logger
 from common.config import redis_host, redis_port, redis_db
-from common.trading_hours import TradingHours
+from common_library.trading.trading_hours import TradingHours
 from pathlib import Path
 from common.base_service import BaseService
 

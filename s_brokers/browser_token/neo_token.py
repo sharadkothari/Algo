@@ -7,6 +7,7 @@ from common.my_logger import logger
 from common.utils import TimeCalc, Encrypt
 from playwright.async_api import async_playwright
 from common.telegram_bot import TelegramBotService as TelegramBot
+import json
 import time
 
 tbot = TelegramBot(send_only=True)
@@ -60,6 +61,8 @@ def store_token(client, token):
     tc = TimeCalc()
     r.expireat("browser_token", int(tc.next_6am().timestamp()))
     r.hset('browser_token', client, e.encrypt(token))
+    logger.info(f"{client} | ✅ token stored")
+    tbot.send(f"{client} | ✅ token stored")
 
 
 async def get_token_async(client_ids):
@@ -81,17 +84,34 @@ async def get_token_async(client_ids):
     for client, token in results:
         if token:
             store_token(client, token)
-            logger.info(f"{client} | ✅ token stored")
-            tbot.send(f"{client} | ✅ token stored")
         else:
             logger.warning(f"{client} | ❌ token not found")
             tbot.send(f"{client} |  ❌ error")
         await asyncio.sleep(1)
 
+def get_token_from_api(client):
+    map = {"sivdu": "S1VDU", "ylcgn": "YL6GN"}
+    redis_key = f"api_token:{map[client]}"
+    enc = Encrypt(map[client])
+    r = get_redis_client_v2(port_ix=1)
+    encrypted_data = r.get(redis_key)
+    if encrypted_data:
+        data = json.loads(enc.decrypt(encrypted_data))
+        token = f"{data['configuration']['edit_token']}::{data['configuration']['edit_sid']}"
+        store_token(client, token)
+        return True
+    return False
+
 
 def get_token(client_ids=('sivdu', 'ylcgn')):
-    asyncio.run(get_token_async(client_ids))
+    missing_clients = {
+        client
+        for client in set(client_ids)
+        if not get_token_from_api(client)
+    }
+    if missing_clients:
+        asyncio.run(get_token_async(missing_clients))
 
 
 if __name__ == '__main__':
-    get_token(['sivdu'])
+    get_token(['ylcgn'])

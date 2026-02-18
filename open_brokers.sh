@@ -14,8 +14,8 @@ URLS=(
 )
 
 PROFILES=(
-  'Default'
-  'profile 1'
+  'profile 5'
+  'profile 4'
   'profile 2'
   'profile 5'
   'profile 4'

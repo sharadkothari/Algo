@@ -15,19 +15,15 @@ def bump_id(last_id):
     except Exception:
         return "0-1"
 
-@router.get("/orderbook")
-def get_orderbook():
-    compressed =r.get(f"algo-eq:orderbook:{redis_suffix}")
+@router.get("/portfoliostate")
+def get_daystate():
+    compressed = r.get(f"algo-eq:portfolio_state:{redis_suffix}")
     return Response(content=compressed, media_type="application/json", headers={"Content-Encoding": "gzip"})
 
-@router.get("/symbolstate")
-def get_symbolstate():
-    compressed = r.get(f"algo-eq:symbolstate:{redis_suffix}")
-    return Response(content=compressed, media_type="application/json", headers={"Content-Encoding": "gzip"})
 
-@router.get("/daystate")
-def get_symbolstate():
-    compressed = r.get(f"algo-eq:daystate:{redis_suffix}")
+@router.get("/treestate")
+def get_daystate():
+    compressed = r.get(f"algo-eq:tree_state:{redis_suffix}")
     return Response(content=compressed, media_type="application/json", headers={"Content-Encoding": "gzip"})
 
 @router.get("/overallmtm")

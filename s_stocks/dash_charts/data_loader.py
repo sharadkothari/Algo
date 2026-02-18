@@ -5,7 +5,7 @@ from common.config import get_redis_client
 from redis.commands.json.path import Path
 import datetime as dt
 from common.expiry import Expiry
-from common.trading_hours import TradingHours
+from common_library.trading.trading_hours import TradingHours
 
 redis_client = get_redis_client()
 

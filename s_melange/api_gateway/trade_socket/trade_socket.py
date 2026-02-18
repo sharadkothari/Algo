@@ -13,6 +13,7 @@ channel_to_type = {
     "tick_channel": "tick",
     "position_book_channel": "position_book",
     "margin_book_channel": "margin_book",
+    "telemetry_channel": "telemetry",
 }
 
 class ClientStream:
@@ -22,6 +23,7 @@ class ClientStream:
             "tick": asyncio.Queue(maxsize=10),
             "position_book": asyncio.Queue(maxsize=1),
             "margin_book": asyncio.Queue(maxsize=1),
+            "telemetry": asyncio.Queue(maxsize=20),
         }
 
 active_clients: set[ClientStream] = set()
